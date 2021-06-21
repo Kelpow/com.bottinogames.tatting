@@ -1,0 +1,452 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
+[System.Serializable]
+[CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
+public class TattingFont : ScriptableObject
+{
+#if UNITY_EDITOR
+    public TattingFontSetupWizard setupWizard;
+#endif
+
+
+    [SerializeField] private bool _caseless = false;
+    public bool caseless
+    {
+        get { return _caseless; }
+        set
+        {
+            if(value != _caseless)
+            {
+                isDirty = true;
+                _caseless = value;
+            }
+        }
+    }
+
+    [SerializeField] private float _distanceBetweenCharacters = 1;
+    public float distanceBetweenCharacters { 
+        get { return _distanceBetweenCharacters; } 
+        set 
+        {
+            if (value != _distanceBetweenCharacters)
+            {
+                _distanceBetweenCharacters = value;
+            }
+        } 
+    }
+
+    [SerializeField] private Vector3 _characterRotation = Vector3.zero;
+    public Vector3 characterRotation { get { return _characterRotation; } set { _characterRotation = value; } }
+
+
+
+
+    public const int UPPERCASE_START = 26;
+    public const int UPPERCASE_END = 51;
+
+    public static bool isUpperDefault(int i) { return UPPERCASE_START <= i && i <= UPPERCASE_END; }
+
+    public readonly char[] defaultCharacters = {
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' '
+    };
+    public Mesh[] defaultCharactersMeshes= new Mesh[63];
+
+
+    public List<char> extraCharacters = new List<char>() { '-', ',', '.', '!', '?' };
+    public List<Mesh> extraMeshes = new List<Mesh>() { null, null, null, null, null };
+
+    public void RemoveExtra(int i)
+    {
+        extraCharacters.RemoveAt(i);
+        extraMeshes.RemoveAt(i);
+    }
+    public void AddExtra(char c)
+    {
+        extraCharacters.Add(c);
+        extraMeshes.Add(null);
+    }
+
+    public void ShiftExtra(int i, int dir)
+    {
+        int target = i + dir;
+        if (target >= 0 && target < extraCharacters.Count)
+        {
+            char tempC = extraCharacters[target];
+            Mesh tempM = extraMeshes[target];
+            extraCharacters[target] = extraCharacters[i];
+            extraMeshes[target] = extraMeshes[i];
+
+            extraCharacters[i] = tempC;
+            extraMeshes[i] = tempM;
+        }
+    }
+
+    public Mesh defaultMesh;
+
+
+    public bool isDirty;
+
+    private Dictionary<char, Mesh> _meshCharacters = null;
+    public Dictionary<char, Mesh> meshCharacters
+    {
+        get
+        {
+            if (_meshCharacters == null || isDirty)
+            {
+                _meshCharacters = ToDictionary();
+                isDirty = false;
+            }
+            return _meshCharacters;
+        }
+    }
+
+    public Dictionary<char, Mesh> ToDictionary()
+    {
+        bool boundsSet = false;
+
+        Dictionary<char, Mesh> newDictionary = new Dictionary<char, Mesh>();
+
+        for (int i = 0; i < defaultCharacters.Length; i++)
+        {
+            if(caseless && isUpperDefault(i))
+            {
+                newDictionary.Add(defaultCharacters[i], defaultCharactersMeshes[i - UPPERCASE_START]);
+                continue;
+            }
+
+            if (defaultCharactersMeshes[i] == null)
+                newDictionary.Add(defaultCharacters[i], defaultMesh);
+            else
+            {
+                if (!boundsSet)
+                {
+                    fontBounds = defaultCharactersMeshes[i].bounds;
+                    boundsSet = true;
+                }
+                else
+                {
+                    newDictionary.Add(defaultCharacters[i], defaultCharactersMeshes[i]);
+
+                    fontBounds.min = Vector3.Min(fontBounds.min, defaultCharactersMeshes[i].bounds.min);
+                    fontBounds.max = Vector3.Max(fontBounds.max, defaultCharactersMeshes[i].bounds.max);
+                }
+                
+            }
+        }
+
+        for (int i = 0; i < extraCharacters.Count; i++)
+        {
+            if (extraMeshes[i] == null)
+                newDictionary.Add(extraCharacters[i], defaultMesh);
+            else
+            {
+                newDictionary.Add(extraCharacters[i], extraMeshes[i]);
+
+                fontBounds.min = Vector3.Min(fontBounds.min, extraMeshes[i].bounds.min);
+                fontBounds.max = Vector3.Max(fontBounds.max, extraMeshes[i].bounds.max);
+            }
+        }
+
+        return newDictionary;
+    }
+
+    [SerializeField] public Bounds fontBounds = new Bounds(Vector3.zero, -Vector3.one);
+
+}
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(TattingFont))]
+public class TattingFontInspector : Editor
+{
+
+    string charToAdd = "";
+
+
+    public override void OnInspectorGUI()
+    {
+        TattingFont font = (TattingFont)target;
+
+
+        GUILayout.Space(15);
+        GUI.enabled = !font.setupWizard;
+        if (GUILayout.Button("Launch Setup Wizard"))
+            font.setupWizard = TattingFontSetupWizard.NewWizard(font, this);
+
+        if (font.setupWizard)
+        {
+            GUILayout.Space(15);
+            GUILayout.Label("Waiting for Setup Wizard...", EditorStyles.boldLabel);
+
+            return;
+        }
+
+        GUILayout.Space(15);
+        GUILayout.Label("Settings", EditorStyles.boldLabel);
+        EditorGUI.BeginChangeCheck();
+        font.caseless = EditorGUILayout.Toggle("Caseless", font.caseless);
+        if (EditorGUI.EndChangeCheck())
+            EditorUtility.SetDirty(font);
+
+        EditorGUI.BeginChangeCheck();
+        font.distanceBetweenCharacters = EditorGUILayout.FloatField("Character separation",font.distanceBetweenCharacters);
+        font.characterRotation = EditorGUILayout.Vector3Field("Character rotation", font.characterRotation);
+        if (EditorGUI.EndChangeCheck())
+        {
+            EditorUtility.SetDirty(font);
+            Debug.Log("test3");
+            foreach (TattingRenderer rend in Resources.FindObjectsOfTypeAll<TattingRenderer>())
+                if (!EditorUtility.IsPersistent(rend.transform.root.gameObject))
+                    rend.UpdateAllCharacterPositions();
+        }
+
+        EditorGUI.BeginChangeCheck();
+
+        GUILayout.Space(15);
+        GUILayout.Label("Default Characters", EditorStyles.boldLabel);
+
+        for (int i = 0; i < font.defaultCharacters.Length; i++)
+        {
+            DrawCharacterMeshCombo(true, i, font);
+        }
+
+        GUILayout.Space(15);
+        GUILayout.Label("Non-Default Characters", EditorStyles.boldLabel);
+
+        for (int i = 0; i < font.extraCharacters.Count; i++)
+        {
+            DrawCharacterMeshCombo(false, i, font);
+        }
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            EditorUtility.SetDirty(font);
+            font.isDirty = true;
+
+            foreach (TattingRenderer rend in Resources.FindObjectsOfTypeAll<TattingRenderer>())
+                if (!EditorUtility.IsPersistent(rend.transform.root.gameObject))
+                    rend.SendMessage("RefreshCharacters");
+        }
+
+
+        GUI.enabled = true;
+        GUILayout.Space(5);
+
+        EditorGUI.BeginChangeCheck();
+
+        GUILayout.BeginHorizontal();
+        {
+
+            string newCharToAdd = GUILayout.TextField(charToAdd, GUILayout.Width(20));
+
+            int removal = newCharToAdd.LastIndexOfAny(font.defaultCharacters);
+            if (removal == -1)
+            {
+                if (newCharToAdd.Length > 0)
+                {
+                    if (!font.extraCharacters.Contains(newCharToAdd[newCharToAdd.Length - 1]))
+                        charToAdd = newCharToAdd[newCharToAdd.Length - 1].ToString();
+                }
+                else
+                    charToAdd = "";
+            }
+
+            GUI.enabled = charToAdd.Length != 0;
+            if (GUILayout.Button("Add Extra Character"))
+            {
+                font.AddExtra(charToAdd[0]);
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            EditorUtility.SetDirty(font);
+
+            Debug.Log("test2");
+        }
+    }
+
+
+
+    private void DrawCharacterMeshCombo(bool isDefault, int i, TattingFont font)
+    {
+        if (font.caseless && isDefault)
+            if (TattingFont.isUpperDefault(i))
+                return;
+
+        char c = isDefault ? 
+            font.defaultCharacters[i] : 
+            font.extraCharacters[i];
+
+        Mesh m = isDefault ? 
+            font.defaultCharactersMeshes[i] : 
+            font.extraMeshes[i];
+
+        bool isSpace = (c == ' ');
+
+        GUILayout.BeginHorizontal();
+        {
+
+            GUI.enabled = false;
+            GUILayout.TextField(c.ToString(), GUILayout.Width(20));
+
+            
+            GUI.enabled = !isSpace;
+            if (isDefault)
+            {
+                font.defaultCharactersMeshes[i] = EditorGUILayout.ObjectField(m, typeof(Mesh), allowSceneObjects: false) as Mesh;
+            } else
+            {
+                font.extraMeshes[i] = EditorGUILayout.ObjectField(m, typeof(Mesh), allowSceneObjects: false) as Mesh;
+            }
+
+
+            if (!isDefault)
+            {
+                if(GUILayout.Button("X", GUILayout.Width(20)))
+                {
+                    font.RemoveExtra(i);
+                }
+
+                GUI.enabled = i != 0;
+                if(GUILayout.Button("▲", GUILayout.Width(20)))
+                {
+                    font.ShiftExtra(i, -1);
+                }
+
+                GUI.enabled = i != font.extraCharacters.Count - 1;
+                if(GUILayout.Button("▼", GUILayout.Width(20)))
+                {
+                    font.ShiftExtra(i, 1);
+                }
+            }
+        }
+        GUILayout.EndHorizontal();
+
+        if (isDefault)
+        {
+            if (i == TattingFont.UPPERCASE_START - 1 || i == TattingFont.UPPERCASE_END)
+                GUILayout.Space(8);
+        }
+
+
+    }
+} 
+
+ 
+
+
+public class TattingFontSetupWizard : EditorWindow
+{
+    public static TattingFontSetupWizard NewWizard(TattingFont font, TattingFontInspector inspector)
+    {
+        TattingFontSetupWizard newWizard = EditorWindow.CreateInstance<TattingFontSetupWizard>();
+        newWizard.SetSize(new Vector2(300f, 85f));
+        newWizard.font = font;
+        newWizard.titleContent = new GUIContent("Tatting Setup Wizard: " + font.name);
+        newWizard.inspector = inspector;
+        newWizard.ShowUtility();
+        return newWizard;
+    }
+
+    public void OnLostFocus(){Focus();}
+    public void OnDisable() { inspector.Repaint(); }
+
+    public void SetSize(Vector2 size) {this.minSize = size; this.maxSize = size;}
+
+    enum States
+    {
+        Start,
+        Automatic,
+        Manual,
+        Ending
+    }
+
+
+    TattingFont font;
+    TattingFontInspector inspector;
+
+    States currentState = States.Start;
+
+    //Automatic
+    bool importAsCaseless = false;
+    string path = "";
+    List<Mesh> loadedMeshes = null;
+
+    List<Mesh> importedMeshes;
+
+    public void OnGUI()
+    {
+        GUILayout.Space(4);
+
+        switch (currentState)
+        {
+            case States.Start:
+
+                GUI.enabled = true;
+                if (GUILayout.Button("Automatic Setup", GUILayout.Height(55)))
+                    currentState = States.Automatic;
+
+                break;
+
+            case States.Automatic:
+                if (loadedMeshes == null)
+                {
+                    importAsCaseless = EditorGUILayout.Toggle("Import as caseless", importAsCaseless);
+
+                    if (GUILayout.Button("Open 3D object file", GUILayout.Height(55))) 
+                    {
+                        string fontPath = AssetDatabase.GetAssetPath(font);
+                        path = EditorUtility.OpenFilePanel("Open 3D object file", fontPath.Remove(fontPath.LastIndexOf('/')), "obj,fbx,blend");
+
+                        if (path != "")
+                        {
+                            font.caseless = importAsCaseless;
+
+                            string relativePath = "Assets" + path.Replace(Application.dataPath, "");
+                            Object[] objects = AssetDatabase.LoadAllAssetsAtPath(relativePath);
+                            loadedMeshes = new List<Mesh>();
+                            for (int i = 0; i < objects.Length; i++)
+                            {
+                                Mesh mesh = objects[i] as Mesh;
+                                if (mesh)
+                                {
+                                    loadedMeshes.Add(mesh);
+                                }
+                            }
+
+                            foreach (Mesh mesh in loadedMeshes)
+                            {
+                                if (mesh.name.Length > 1)
+                                    continue;
+                                
+                                for (int i = 0; i < font.defaultCharacters.Length; i++)
+                                {
+                                    if (importAsCaseless && TattingFont.isUpperDefault(i))
+                                        continue;
+
+                                    if ((importAsCaseless ? mesh.name.ToLower()[0] : mesh.name[0]) == font.defaultCharacters[i])
+                                    {
+                                        font.defaultCharactersMeshes[i] = mesh;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    this.Close();
+                }
+                break;
+        }
+    }
+}
+#endif
