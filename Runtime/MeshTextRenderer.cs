@@ -373,10 +373,6 @@ namespace Tatting
                 Gizmos.DrawLine(basePoint + new Vector3(.2f, -.2f), basePoint + new Vector3(-.2f, .2f));
             }
 
-            Gizmos.matrix = rotationMatrix;
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawCube(LocalBounds.center, LocalBounds.size);
-
         }
 #endif
     }
