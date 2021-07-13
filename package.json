@@ -1,7 +1,7 @@
 {
-	"name" : "com.bottinogames.template",
+	"name" : "com.bottinogames.tatting",
 	"version" : "0.0.1",
-	"displayName" : "Template Package",
+	"displayName" : "Tatting Package",
 	"description" : " ",
 	"unity" : "2019.4"
 }

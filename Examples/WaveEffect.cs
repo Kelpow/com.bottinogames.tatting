@@ -2,8 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class WaveTattingEffect : Tatting.MeshTextEffect
+public class WaveEffect : Tatting.MeshTextEffect
 {
+
+    private void Start()
+    {
+        Debug.Log("Wave");
+    }
 
     public float intensity = 0.25f;
     public float frequency = 0.3f;

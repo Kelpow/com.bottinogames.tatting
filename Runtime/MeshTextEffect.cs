@@ -12,12 +12,23 @@ namespace Tatting {
     public abstract class MeshTextEffect : MonoBehaviour
     {
 
+        [HideInInspector]
+        public bool startOnAwake;
+
+        private void Awake()
+        {
+            if (startOnAwake)
+                Activate();
+        }
 
         public void Activate()
         {
             MeshTextRenderer rend = GetComponent<MeshTextRenderer>();
             if (rend)
+            {
+                rend.textEffects -= TextEffect;
                 rend.textEffects += TextEffect;
+            }
         }
 
         public void Deactivate()
@@ -37,7 +48,15 @@ namespace Tatting {
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
-            
+
+            MeshTextEffect effect = (MeshTextEffect)target;
+
+            GUILayout.Space(4);
+
+            effect.startOnAwake = EditorGUILayout.Toggle("Start on Awake",effect.startOnAwake);
+
+            GUILayout.Space(8);
+
             GUI.enabled = Application.isPlaying;
             if (GUILayout.Button("Activate"))
                 ((MeshTextEffect)target).Activate();

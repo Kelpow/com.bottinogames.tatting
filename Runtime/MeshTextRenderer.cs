@@ -28,7 +28,7 @@ namespace Tatting
             }
         }
 
-        private TextAnchor _anchor = TextAnchor.MiddleCenter;
+        [SerializeField] [HideInInspector] private TextAnchor _anchor = TextAnchor.MiddleCenter;
 
         public TextAnchor anchor
         {
@@ -41,6 +41,9 @@ namespace Tatting
         {
             if (!font)
                 return;
+
+            if (_characterObjects == null)
+                _characterObjects = new List<MeshCharacter>();
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -220,7 +223,8 @@ namespace Tatting
             {
                 UpdateCharacterPosition(i);
             }
-            TextUpdated.Invoke();
+            if(TextUpdated != null)
+                TextUpdated.Invoke();
         }
         public void UpdateAllCharacterRenderers()
         {

@@ -64,7 +64,7 @@ namespace Tatting
             holder.localPosition = position + offset;
             holder.localRotation = Quaternion.Euler(rotation);
 
-            transform.Rotate(rotationaloffset, Space.Self);
+            holder.Rotate(rotationaloffset, Space.Self);
         }
     }
 }
