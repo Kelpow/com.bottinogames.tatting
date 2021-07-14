@@ -7,15 +7,26 @@ using UnityEditor;
 
 namespace Tatting
 {
-    [ExecuteAlways]
-    [DisallowMultipleComponent]
+    /// <summary>
+    /// A renderer for displaying Tatting 3D mesh text's.
+    /// </summary>
+    [ExecuteAlways,DisallowMultipleComponent]
     public class MeshTextRenderer : MonoBehaviour
     {
+        readonly Color GIZMOS_SELECTION_BOX_COLOR = new Color(0f, 1f, 0.5f, 0.25f);
+        readonly Vector3 GIZMOS_SELECTION_BOX_SIZEOFFSET = Vector3.one * 0.01f;
+        readonly Color GIZMOS_CHARACTER_BOX_COLOR = new Color(1f, 0.4f, 0.1f, 1f);
+        readonly Vector3 GIZMOS_CHARACTER_BOX_SIZEOFFSET = Vector3.one * 0.005f;
+        const float GIZMOS_CHARACTER_PIVOT_SIZE = 0.2f;
 
-        [HideInInspector] public MeshFont font;
+        /// <summary> Tatting font to use for display</summary>
+        public MeshFont font;
 
-        [SerializeField] [HideInInspector] private string _text = "";
-        public string text
+        private List<MeshCharacter> _characterObjects;
+
+        [SerializeField] private string _text = "";
+        /// <summary> Display text </summary>
+        public string Text
         {
             get { return _text; }
             set
@@ -24,19 +35,58 @@ namespace Tatting
                 {
                     _text = value;
                     RefreshCharacters();
+#if UNITY_EDITOR
+                    _oldText = _text;
+#endif
                 }
             }
         }
 
-        [SerializeField] [HideInInspector] private TextAnchor _anchor = TextAnchor.MiddleCenter;
+#if UNITY_EDITOR
+        //Exists purely to track when _text is changed by Undo-Redo
+        private string _oldText = "";
+#endif
 
-        public TextAnchor anchor
+
+
+        [SerializeField] private TextAnchor _anchor = TextAnchor.MiddleCenter;
+
+        //Tatting places characters left to right, from the bottom left coner. This is used to offs
+        private Vector3 basePosition;
+
+
+
+        [SerializeField] private Material[] _materials = new Material[1];
+
+        public Material[] materials { get { return _materials; } }
+        
+
+        [SerializeField] private UnityEngine.Rendering.ShadowCastingMode _shadowCastingMode;
+
+        [SerializeField] private bool _receiveShadows;
+
+        public TextAnchor Anchor
         {
             get { return _anchor; }
             set { if (value != _anchor) { _anchor = value; UpdateAllCharacterPositions(); } }
         }
+        public UnityEngine.Rendering.ShadowCastingMode ShadowCastingMode
+        {
+            get { return _shadowCastingMode; }
+            set { if (value != _shadowCastingMode) { _shadowCastingMode = value; UpdateAllCharacterRenderers(); } }
+        }
+        public bool ReceiveShadows
+        {
+            get { return _receiveShadows; }
+            set { if (value != _receiveShadows) { _receiveShadows = value; UpdateAllCharacterRenderers(); } }
+        }
 
 
+
+
+        public void SetMaterials(Material[] materials) { _materials = materials; UpdateAllCharacterRenderers(); }
+
+        //Keeps the Mesh Characters up to date with the display text
         private void RefreshCharacters()
         {
             if (!font)
@@ -45,35 +95,28 @@ namespace Tatting
             if (_characterObjects == null)
                 _characterObjects = new List<MeshCharacter>();
 
-            for (int i = 0; i < text.Length; i++)
+            for (int i = 0; i < Text.Length; i++)
             {
-                char c = text[i];
-                if (font.meshCharacters.ContainsKey(c))
+                char character = Text[i];
+                if (font.meshCharacters.ContainsKey(character) && font.meshCharacters[character] != null)
                 {
-                    Mesh m = font.meshCharacters[c];
-                    if (m != null)
-                    {
+                    GetCharacter(i).filter.mesh = font.meshCharacters[character];
+                    GetCharacter(i).renderer.enabled = true;
+                }
+                else
+                {
+                    GetCharacter(i).renderer.enabled = false;
 #if UNITY_EDITOR
-
+                    GetCharacter(i).position = Vector3.zero;
 #endif
-                        GetCharacter(i).filter.mesh = m;
-                        GetCharacter(i).renderer.enabled = true;
-                    }
-                    else
-                    {
-                        GetCharacter(i).renderer.enabled = false;
-#if UNITY_EDITOR
-                        GetCharacter(i).position = Vector3.zero;
-#endif
-                    }
                 }
             }
 
-            for (int i = text.Length; i < _characterObjects.Count; i++)
+            for (int i = Text.Length; i < _characterObjects.Count; i++)
             {
                 _characterObjects[i].renderer.enabled = false;
 #if UNITY_EDITOR
-                _characterObjects[i].position = _characterObjects[0].position;
+                _characterObjects[i].position = _characterObjects[0].position; //Position of disabled objects only matter when using the editors 'Frame Selected' function (f in scene view);
 #endif
             }
 
@@ -83,9 +126,9 @@ namespace Tatting
 
         //===== Unity Events =====
 
-        private void OnDisable()
+        private void OnAwake()
         {
-            Purge();
+            PurgeAllMeshCharacters();
         }
 
         private void OnEnable()
@@ -94,19 +137,50 @@ namespace Tatting
             UpdateAllCharacterRenderers();
         }
 
+#if UNITY_EDITOR
+        //This code exists purely to track any changes made by the Undo-Redo system, or any other editor system which may edit _text directly.
+        //Uses isDirty as RefreshCharacters has operations which should not be used in OnValidate.
+        private bool _isDirty;
+        private void OnValidate()
+        {
+            if (_text != _oldText)
+            {
+                _isDirty = true;
+                _oldText = _text;
+            }
+        }
+#endif
+
+        private void Update()
+        {
+#if UNITY_EDITOR
+            if (_isDirty)
+                RefreshCharacters();
+#endif
+
+            if (textEffects == null)
+                return;
+
+            for (int i = 0; i < Text.Length; i++)
+            {
+                Vector3 o = Vector3.zero;
+                Vector3 ro = Vector3.zero;
+                textEffects.Invoke(i, ref o, ref ro);
+                GetCharacter(i).UpdateOffset(o, ro);
+            }
+        }
+
 
 
 
         //===== Character Objects =====
-
-        private List<MeshCharacter> _characterObjects;
 
         private MeshCharacter GetCharacter(int i)
         {
             if (_characterObjects == null)
                 _characterObjects = new List<MeshCharacter>();
 
-            while (_characterObjects.Count <= i)
+            for (int j = 0; j < i; j++)
                 CreateNewCharacterObject();
 
             return _characterObjects[i];
@@ -138,8 +212,9 @@ namespace Tatting
             UpdateCharacterRenderer(_characterObjects.Count - 1);
         }
 
+        /// <summary> Removes all Childed Mesh Characters. Used for clearing any straggler MeshCharacters if object is duplicated through editor or instantiation. Will be called automatically </summary>
         [ContextMenu("Purge")]
-        private void Purge()
+        public void PurgeAllMeshCharacters()
         {
             _characterObjects = null;
             MeshCharacter[] found = GetComponentsInChildren<MeshCharacter>();
@@ -156,76 +231,78 @@ namespace Tatting
 
         //===== Modifying Character Objects =====
 
-        private Vector3 basePoint;
-
-        private void UpdateBasePoint()
+        private void UpdateBasePosition()
         {
-            if (text.Length == 0)
+            if (Text.Length == 0)
                 return;
 
-            basePoint.z = 0f;
+            basePosition.z = 0f;
 
-            switch (anchor)
+            switch (Anchor)
             {
                 case TextAnchor.UpperCenter:
                 case TextAnchor.MiddleCenter:
                 case TextAnchor.LowerCenter:
-                    basePoint.x = -font.distanceBetweenCharacters * (text.Length - 1) * 0.5f;
+                    basePosition.x = -font.distanceBetweenCharacters * (Text.Length - 1) * 0.5f;
                     break;
                 case TextAnchor.UpperLeft:
                 case TextAnchor.MiddleLeft:
                 case TextAnchor.LowerLeft:
-                    basePoint.x = font.characterBounds.extents.x;
+                    basePosition.x = font.characterBounds.extents.x;
                     break;
                 case TextAnchor.UpperRight:
                 case TextAnchor.MiddleRight:
                 case TextAnchor.LowerRight:
-                    basePoint.x = (-font.distanceBetweenCharacters * (text.Length - 1)) - font.characterBounds.extents.x;
+                    basePosition.x = (-font.distanceBetweenCharacters * (Text.Length - 1)) - font.characterBounds.extents.x;
                     break;
             }
 
-            switch (anchor)
+            switch (Anchor)
             {
                 case TextAnchor.MiddleLeft:
                 case TextAnchor.MiddleCenter:
                 case TextAnchor.MiddleRight:
-                    basePoint.y = 0f;
+                    basePosition.y = 0f;
                     break;
                 case TextAnchor.LowerLeft:
                 case TextAnchor.LowerCenter:
                 case TextAnchor.LowerRight:
-                    basePoint.y = font.characterBounds.extents.y;
+                    basePosition.y = font.characterBounds.extents.y;
                     break;
                 case TextAnchor.UpperLeft:
                 case TextAnchor.UpperCenter:
                 case TextAnchor.UpperRight:
-                    basePoint.y = -font.characterBounds.extents.y;
+                    basePosition.y = -font.characterBounds.extents.y;
                     break;
             }
         }
+
         private void UpdateCharacterPosition(int i)
         {
-            _characterObjects[i].UpdatePosition(basePoint + new Vector3(font.distanceBetweenCharacters * i, 0f, 0f), font.characterRotation);
+            _characterObjects[i].UpdatePosition(basePosition + new Vector3(font.distanceBetweenCharacters * i, 0f, 0f), font.characterRotation);
             _characterObjects[i].pivot = font.characterBounds.center;
         }
 
         private void UpdateCharacterRenderer(int i)
         {
             _characterObjects[i].renderer.sharedMaterials = _materials;
-            _characterObjects[i].renderer.shadowCastingMode = shadowCastingMode;
-            _characterObjects[i].renderer.receiveShadows = receiveShadows;
+            _characterObjects[i].renderer.shadowCastingMode = ShadowCastingMode;
+            _characterObjects[i].renderer.receiveShadows = ReceiveShadows;
         }
 
+        /// <summary> Refreshes all character positions. </summary>
         public void UpdateAllCharacterPositions()
         {
-            UpdateBasePoint();
-            for (int i = 0; i < text.Length; i++)
+            UpdateBasePosition();
+            for (int i = 0; i < Text.Length; i++)
             {
                 UpdateCharacterPosition(i);
             }
-            if(TextUpdated != null)
-                TextUpdated.Invoke();
+            if(textUpdated != null)
+                textUpdated.Invoke();
         }
+        
+        //
         public void UpdateAllCharacterRenderers()
         {
             if (_characterObjects == null)
@@ -235,46 +312,6 @@ namespace Tatting
                 UpdateCharacterRenderer(i);
             }
         }
-
-
-        //===== Renderer Settings =====
-
-        [SerializeField] private Material[] _materials = new Material[1];
-        public Material[] materials { get { return _materials; } }
-        public void SetMaterials(Material[] materials)
-        {
-            _materials = materials;
-            UpdateAllCharacterRenderers();
-        }
-
-        [SerializeField] [HideInInspector] private UnityEngine.Rendering.ShadowCastingMode _shadowCastingMode;
-        public UnityEngine.Rendering.ShadowCastingMode shadowCastingMode
-        {
-            get { return _shadowCastingMode; }
-            set
-            {
-                if (value != _shadowCastingMode)
-                {
-                    _shadowCastingMode = value;
-                    UpdateAllCharacterRenderers();
-                }
-            }
-        }
-
-        [SerializeField] [HideInInspector] private bool _receiveShadows;
-        public bool receiveShadows
-        {
-            get { return _receiveShadows; }
-            set
-            {
-                if (value != _receiveShadows)
-                {
-                    _receiveShadows = value;
-                    UpdateAllCharacterRenderers();
-                }
-            }
-        }
-
 
 
         //===== Text Effects =====
@@ -289,7 +326,7 @@ namespace Tatting
 
                 if(_textEffects == null)
                 {
-                    for (int i = 0; i < text.Length; i++)
+                    for (int i = 0; i < Text.Length; i++)
                     {
                         GetCharacter(i).offset = Vector3.zero;
                         GetCharacter(i).rotationaloffset = Vector3.zero;
@@ -298,40 +335,30 @@ namespace Tatting
             }
         }
 
-        private void Update()
-        {
-            if (textEffects == null)
-                return;
-
-            for (int i = 0; i < text.Length; i++)
-            {
-                Vector3 o = Vector3.zero;
-                Vector3 ro = Vector3.zero;
-                textEffects.Invoke(i, ref o, ref ro);
-                GetCharacter(i).UpdateOffset(o, ro);
-            }
-        }
-
 
 
         //===== External Events =====
-
-        public System.Action TextUpdated;
+        
+        /// <summary>
+        /// Called anytime the 'text' string is changed. Useful for updating visual elements that rely on text content or length.
+        /// </summary>
+        public System.Action textUpdated;
 
 
 
 
         //===== Data =====
         
+
         public Bounds LocalBounds
         {
             get 
             {
                 Bounds bounds = new Bounds();
-                if (text.Length == 0)
+                if (Text.Length == 0)
                     return bounds;
                 bounds.min = _characterObjects[0].position - font.characterBounds.extents;
-                bounds.max = _characterObjects[text.Length - 1].position + font.characterBounds.extents;
+                bounds.max = _characterObjects[Text.Length - 1].position + font.characterBounds.extents;
                 return bounds;
             }
         }
@@ -348,7 +375,7 @@ namespace Tatting
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (!font || text.Length == 0)
+            if (!font || Text.Length == 0)
             {
                 return;
             }
@@ -357,24 +384,24 @@ namespace Tatting
             Gizmos.matrix = rotationMatrix;
 
             if (Selection.activeObject && Selection.activeObject == ((Object)font))
-                Gizmos.color = new Color(0f, 1f, .5f, .25f);
+                Gizmos.color = GIZMOS_SELECTION_BOX_COLOR;
             else
                 Gizmos.color = Color.clear;
 
-            Vector3 textExtent = Vector3.right * font.distanceBetweenCharacters * (text.Length - 1);
+            Vector3 textExtent = Vector3.right * font.distanceBetweenCharacters * (Text.Length - 1);
 
 
-            Gizmos.DrawCube(basePoint + (textExtent * 0.5f), font.characterBounds.size + textExtent + Vector3.one * 0.01f);
+            Gizmos.DrawCube(basePosition + (textExtent / 2), font.characterBounds.size + textExtent + GIZMOS_SELECTION_BOX_SIZEOFFSET);
 
 
             if (Selection.activeObject && Selection.activeObject == ((Object)font))
             {
-                Gizmos.color = new Color(1f, .4f, .1f, .25f);
-                Gizmos.DrawCube(basePoint, font.characterBounds.size + Vector3.one * 0.005f);
+                Gizmos.color = GIZMOS_CHARACTER_BOX_COLOR;
+                Gizmos.DrawWireCube(basePosition, font.characterBounds.size);
 
-                Gizmos.color = new Color(.1f, .4f, 1f, 1f);
-                Gizmos.DrawLine(basePoint + new Vector3(-.2f, -.2f), basePoint + new Vector3(.2f, .2f));
-                Gizmos.DrawLine(basePoint + new Vector3(.2f, -.2f), basePoint + new Vector3(-.2f, .2f));
+                Gizmos.color = new Color(0.1f, 0.4f, 1f, 1f);
+                Gizmos.DrawLine(basePosition + new Vector3(-GIZMOS_CHARACTER_PIVOT_SIZE, -GIZMOS_CHARACTER_PIVOT_SIZE), basePosition + new Vector3(GIZMOS_CHARACTER_PIVOT_SIZE, GIZMOS_CHARACTER_PIVOT_SIZE));
+                Gizmos.DrawLine(basePosition + new Vector3(GIZMOS_CHARACTER_PIVOT_SIZE, -GIZMOS_CHARACTER_PIVOT_SIZE), basePosition + new Vector3(-GIZMOS_CHARACTER_PIVOT_SIZE, GIZMOS_CHARACTER_PIVOT_SIZE));
             }
 
         }
@@ -399,12 +426,22 @@ namespace Tatting
             MeshTextRenderer rend = (MeshTextRenderer)target;
 
 
+            Undo.RecordObject(rend, "Mesh Text Renderer Inspector");
+
+
             rend.font = EditorGUILayout.ObjectField(rend.font, typeof(MeshFont), allowSceneObjects: false) as MeshFont;
-            rend.text = EditorGUILayout.TextField("Text", rend.text);
+
+            EditorGUI.BeginChangeCheck();
+            rend.Text = EditorGUILayout.TextField("Text", rend.Text);
+            if(EditorGUI.EndChangeCheck())
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews(); //Forces Unity to re-draw the game view when text is changed
 
             GUILayout.Space(6);
-
-            rend.anchor = (TextAnchor)EditorGUILayout.EnumPopup("Text anchor", rend.anchor);
+            
+            EditorGUI.BeginChangeCheck();
+            rend.Anchor = (TextAnchor)EditorGUILayout.EnumPopup("Text anchor", rend.Anchor);
+            if (EditorGUI.EndChangeCheck())
+                EditorUtility.SetDirty(rend); //Forces Unity to re-draw the objects when the anchor is changed.
 
             GUILayout.Space(6);
 
@@ -414,7 +451,7 @@ namespace Tatting
             materialsDropdown = EditorGUILayout.BeginFoldoutHeaderGroup(materialsDropdown, "Materials");
             if(materialsDropdown)
             {
-                EditorGUI.indentLevel = 1;
+                EditorGUI.indentLevel++;
 
                 int l = EditorGUILayout.DelayedIntField("Size",rend.materials.Length);
                 if(l != rend.materials.Length)
@@ -435,7 +472,7 @@ namespace Tatting
                     EditorGUILayout.ObjectField($"Element {i}", rend.materials[i], typeof(Material), allowSceneObjects: false);
                 }
 
-                EditorGUI.indentLevel = 0;
+                EditorGUI.indentLevel--;
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
