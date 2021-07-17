@@ -25,6 +25,30 @@ namespace Tatting
         private List<MeshCharacter> _characterObjects;
 
         [SerializeField] private string _text = "";
+
+#if UNITY_EDITOR
+        //Exists purely to track when _text is changed by Undo-Redo
+        private string _oldText = "";
+#endif
+
+        [SerializeField] private TextAnchor _anchor = TextAnchor.MiddleCenter;
+
+        //Tatting places characters left to right, from the bottom left corner. This is used to offset that corner depending on the anchor position.
+        private Vector3 basePosition;
+
+
+        [SerializeField] private Material[] _materials = new Material[1];
+
+        public Material[] materials { get { return _materials; } }
+        
+
+        [SerializeField] private UnityEngine.Rendering.ShadowCastingMode _shadowCastingMode;
+
+        [SerializeField] private bool _receiveShadows;
+
+        private MeshTextEffectDelegate _textEffects;
+
+
         /// <summary> Display text </summary>
         public string Text
         {
@@ -42,45 +66,42 @@ namespace Tatting
             }
         }
 
-#if UNITY_EDITOR
-        //Exists purely to track when _text is changed by Undo-Redo
-        private string _oldText = "";
-#endif
-
-
-
-        [SerializeField] private TextAnchor _anchor = TextAnchor.MiddleCenter;
-
-        //Tatting places characters left to right, from the bottom left coner. This is used to offs
-        private Vector3 basePosition;
-
-
-
-        [SerializeField] private Material[] _materials = new Material[1];
-
-        public Material[] materials { get { return _materials; } }
-        
-
-        [SerializeField] private UnityEngine.Rendering.ShadowCastingMode _shadowCastingMode;
-
-        [SerializeField] private bool _receiveShadows;
-
         public TextAnchor Anchor
         {
             get { return _anchor; }
             set { if (value != _anchor) { _anchor = value; UpdateAllCharacterPositions(); } }
         }
+
         public UnityEngine.Rendering.ShadowCastingMode ShadowCastingMode
         {
             get { return _shadowCastingMode; }
             set { if (value != _shadowCastingMode) { _shadowCastingMode = value; UpdateAllCharacterRenderers(); } }
         }
+
         public bool ReceiveShadows
         {
             get { return _receiveShadows; }
             set { if (value != _receiveShadows) { _receiveShadows = value; UpdateAllCharacterRenderers(); } }
         }
 
+        /// <summary> Callback for TextEffects, effects that change position and rotation on Update.</summary>
+        public MeshTextEffectDelegate TextEffects
+        {
+            get { return _textEffects; }
+            set
+            {
+                _textEffects = value;
+
+                if (_textEffects == null)
+                {
+                    for (int i = 0; i < Text.Length; i++)
+                    {
+                        GetCharacter(i).positionalOffset = Vector3.zero;
+                        GetCharacter(i).rotationaloffset = Vector3.zero;
+                    }
+                }
+            }
+        }
 
 
 
@@ -98,17 +119,27 @@ namespace Tatting
             for (int i = 0; i < Text.Length; i++)
             {
                 char character = Text[i];
-                if (font.meshCharacters.ContainsKey(character) && font.meshCharacters[character] != null)
+                if (font.meshCharacters.ContainsKey(character))
                 {
-                    GetCharacter(i).filter.mesh = font.meshCharacters[character];
-                    GetCharacter(i).renderer.enabled = true;
+                    if (font.meshCharacters[character] != null)
+                    {
+                        GetCharacter(i).filter.mesh = font.meshCharacters[character];
+                        GetCharacter(i).renderer.enabled = true;
+                    }
+                    else
+                    {
+                        //Null meshes are assumed to be intentionally left as blank space.
+                        GetCharacter(i).renderer.enabled = false;
+#if UNITY_EDITOR
+                        GetCharacter(i).position = Vector3.zero;
+#endif
+                    }
                 }
                 else
                 {
-                    GetCharacter(i).renderer.enabled = false;
-#if UNITY_EDITOR
-                    GetCharacter(i).position = Vector3.zero;
-#endif
+                    //
+                    GetCharacter(i).filter.mesh = font.defaultMesh;
+                    GetCharacter(i).renderer.enabled = true;
                 }
             }
 
@@ -158,14 +189,14 @@ namespace Tatting
                 RefreshCharacters();
 #endif
 
-            if (textEffects == null)
+            if (TextEffects == null)
                 return;
 
             for (int i = 0; i < Text.Length; i++)
             {
                 Vector3 o = Vector3.zero;
                 Vector3 ro = Vector3.zero;
-                textEffects.Invoke(i, ref o, ref ro);
+                TextEffects.Invoke(i, ref o, ref ro);
                 GetCharacter(i).UpdateOffset(o, ro);
             }
         }
@@ -310,28 +341,6 @@ namespace Tatting
             for (int i = 0; i < _characterObjects.Count; i++)
             {
                 UpdateCharacterRenderer(i);
-            }
-        }
-
-
-        //===== Text Effects =====
-
-        private MeshTextEffectDelegate _textEffects;
-        public MeshTextEffectDelegate textEffects
-        {
-            get { return _textEffects; }
-            set
-            {
-                _textEffects = value;
-
-                if(_textEffects == null)
-                {
-                    for (int i = 0; i < Text.Length; i++)
-                    {
-                        GetCharacter(i).offset = Vector3.zero;
-                        GetCharacter(i).rotationaloffset = Vector3.zero;
-                    }
-                }
             }
         }
 

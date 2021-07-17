@@ -26,8 +26,8 @@ namespace Tatting {
             MeshTextRenderer rend = GetComponent<MeshTextRenderer>();
             if (rend)
             {
-                rend.textEffects -= TextEffect;
-                rend.textEffects += TextEffect;
+                rend.TextEffects -= TextEffect;
+                rend.TextEffects += TextEffect;
             }
         }
 
@@ -35,7 +35,7 @@ namespace Tatting {
         {
             MeshTextRenderer rend = GetComponent<MeshTextRenderer>();
             if (rend)
-                rend.textEffects -= TextEffect;
+                rend.TextEffects -= TextEffect;
         }
 
         protected abstract void TextEffect(int i, ref Vector3 offset, ref Vector3 rotationaloffset);

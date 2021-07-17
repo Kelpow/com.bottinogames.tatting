@@ -12,10 +12,6 @@ namespace Tatting
     [CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
     public class MeshFont : ScriptableObject
     {
-#if UNITY_EDITOR
-        public MeshFontSetupWizard setupWizard;
-#endif
-
 
         [SerializeField] private bool _caseless = false;
         public bool caseless
@@ -201,11 +197,11 @@ namespace Tatting
 
 
             GUILayout.Space(15);
-            GUI.enabled = !font.setupWizard;
+            GUI.enabled = !MeshFontSetupWizard.instance;
             if (GUILayout.Button("Launch Setup Wizard"))
-                font.setupWizard = MeshFontSetupWizard.NewWizard(font, this);
+                MeshFontSetupWizard.CreateNewWizard(font, this);
 
-            if (font.setupWizard)
+            if (MeshFontSetupWizard.instance)
             {
                 GUILayout.Space(15);
                 GUILayout.Label("Waiting for Setup Wizard...", EditorStyles.boldLabel);
@@ -389,15 +385,16 @@ namespace Tatting
 
     public class MeshFontSetupWizard : EditorWindow
     {
-        public static MeshFontSetupWizard NewWizard(MeshFont font, TattingFontInspector inspector)
+        public static MeshFontSetupWizard instance;
+
+        public static void CreateNewWizard(MeshFont font, TattingFontInspector inspector)
         {
-            MeshFontSetupWizard newWizard = EditorWindow.CreateInstance<MeshFontSetupWizard>();
-            newWizard.SetSize(new Vector2(300f, 85f));
-            newWizard.font = font;
-            newWizard.titleContent = new GUIContent("Tatting Setup Wizard: " + font.name);
-            newWizard.inspector = inspector;
-            newWizard.ShowUtility();
-            return newWizard;
+            instance = EditorWindow.CreateInstance<MeshFontSetupWizard>();
+            instance.SetSize(new Vector2(300f, 85f));
+            instance.font = font;
+            instance.titleContent = new GUIContent("Tatting Setup Wizard: " + font.name);
+            instance.inspector = inspector;
+            instance.ShowUtility();
         }
 
         public void OnLostFocus() { Focus(); }
