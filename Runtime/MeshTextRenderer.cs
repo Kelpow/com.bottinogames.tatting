@@ -10,7 +10,7 @@ namespace Tatting
     /// <summary>
     /// A renderer for displaying Tatting 3D mesh text's.
     /// </summary>
-    [ExecuteAlways,DisallowMultipleComponent]
+    [ExecuteAlways, DisallowMultipleComponent]
     public class MeshTextRenderer : MonoBehaviour
     {
         readonly Color GIZMOS_SELECTION_BOX_COLOR = new Color(0f, 1f, 0.5f, 0.25f);
@@ -40,7 +40,7 @@ namespace Tatting
         [SerializeField] private Material[] _materials = new Material[1];
 
         public Material[] materials { get { return _materials; } }
-        
+
 
         [SerializeField] private UnityEngine.Rendering.ShadowCastingMode _shadowCastingMode;
 
@@ -106,6 +106,13 @@ namespace Tatting
 
 
         public void SetMaterials(Material[] materials) { _materials = materials; UpdateAllCharacterRenderers(); }
+        public void SetMaterial(Material material) 
+        {
+            if (_materials.Length == 0)
+                _materials = new Material[1];
+            _materials[0] = material; 
+            UpdateAllCharacterRenderers(); 
+        }
 
         //Keeps the Mesh Characters up to date with the display text
         private void RefreshCharacters()
@@ -157,10 +164,15 @@ namespace Tatting
 
         //===== Unity Events =====
 
-        private void OnAwake()
+        private void Start()
         {
             PurgeAllMeshCharacters();
         }
+        
+        //private void OnDisable()
+        //{
+        //    PurgeAllMeshCharacters();
+        //}
 
         private void OnEnable()
         {
@@ -211,8 +223,10 @@ namespace Tatting
             if (_characterObjects == null)
                 _characterObjects = new List<MeshCharacter>();
 
-            for (int j = 0; j < i; j++)
+            while (_characterObjects.Count <= i)
+            {
                 CreateNewCharacterObject();
+            }
 
             return _characterObjects[i];
         }
@@ -329,10 +343,10 @@ namespace Tatting
             {
                 UpdateCharacterPosition(i);
             }
-            if(textUpdated != null)
+            if (textUpdated != null)
                 textUpdated.Invoke();
         }
-        
+
         //
         public void UpdateAllCharacterRenderers()
         {
@@ -347,7 +361,7 @@ namespace Tatting
 
 
         //===== External Events =====
-        
+
         /// <summary>
         /// Called anytime the 'text' string is changed. Useful for updating visual elements that rely on text content or length.
         /// </summary>
@@ -357,11 +371,11 @@ namespace Tatting
 
 
         //===== Data =====
-        
+
 
         public Bounds LocalBounds
         {
-            get 
+            get
             {
                 Bounds bounds = new Bounds();
                 if (Text.Length == 0)
@@ -377,11 +391,12 @@ namespace Tatting
 
 
 
+            
 
-
-        //===== Gizmos =====
 
 #if UNITY_EDITOR
+
+        //===== Gizmos =====
         private void OnDrawGizmos()
         {
             if (!font || Text.Length == 0)
@@ -414,6 +429,15 @@ namespace Tatting
             }
 
         }
+
+        [MenuItem("GameObject/3D Mesh Text",priority = 20)]
+        static void ObjectCreationMenuItem()
+        {
+            GameObject newTatting = new GameObject("3D Mesh Text", typeof(MeshTextRenderer));
+            newTatting.transform.position = SceneView.lastActiveSceneView.pivot;
+        }
+
+
 #endif
     }
 
@@ -422,7 +446,7 @@ namespace Tatting
 
 
     // ||||||||||||||||||||| E D I T O R ||||||||||||||||||||| 
-
+    
 
 #if UNITY_EDITOR
     [CustomEditor(typeof(MeshTextRenderer))]
@@ -440,10 +464,14 @@ namespace Tatting
 
             rend.font = EditorGUILayout.ObjectField(rend.font, typeof(MeshFont), allowSceneObjects: false) as MeshFont;
 
+            EditorGUILayout.BeginHorizontal();
             EditorGUI.BeginChangeCheck();
             rend.Text = EditorGUILayout.TextField("Text", rend.Text);
             if(EditorGUI.EndChangeCheck())
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews(); //Forces Unity to re-draw the game view when text is changed
+            if (GUILayout.Button("Set Name", GUILayout.Width(70)))
+                rend.gameObject.name = rend.Text;
+            EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(6);
             
@@ -478,7 +506,7 @@ namespace Tatting
 
                 for (int i = 0; i < rend.materials.Length; i++)
                 {
-                    EditorGUILayout.ObjectField($"Element {i}", rend.materials[i], typeof(Material), allowSceneObjects: false);
+                    rend.materials[i] = (Material)EditorGUILayout.ObjectField($"Element {i}", rend.materials[i], typeof(Material), allowSceneObjects: false);
                 }
 
                 EditorGUI.indentLevel--;
