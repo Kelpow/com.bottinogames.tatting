@@ -29,7 +29,10 @@ namespace Tatting
 #if UNITY_EDITOR
         //Exists purely to track when _text is changed by Undo-Redo
         private string _oldText = "";
+        //Tracks changing of object layer in editor. At runtime, layer should be changed with SetLayer().
+        private int _oldLayer = -1;
 #endif
+
 
         [SerializeField] private TextAnchor _anchor = TextAnchor.MiddleCenter;
 
@@ -114,6 +117,15 @@ namespace Tatting
             UpdateAllCharacterRenderers(); 
         }
 
+        public void SetLayer(int layer)
+        {
+            gameObject.layer = layer;
+            foreach(MeshCharacter c in _characterObjects)
+            {
+                c.gameObject.layer = layer;
+            }
+        }
+
         //Keeps the Mesh Characters up to date with the display text
         private void RefreshCharacters()
         {
@@ -191,6 +203,11 @@ namespace Tatting
                 _isDirty = true;
                 _oldText = _text;
             }
+
+            if(gameObject.layer != _oldLayer)
+            {
+                SetLayer(gameObject.layer);
+            }
         }
 #endif
 
@@ -215,7 +232,7 @@ namespace Tatting
 
 
 
-
+        
         //===== Character Objects =====
 
         private MeshCharacter GetCharacter(int i)
@@ -239,10 +256,14 @@ namespace Tatting
             newCharacter.holder = newHolder;
 
             newHolder.parent = this.transform;
+            newCharacter.transform.parent = newHolder;
+
+            newHolder.gameObject.layer = gameObject.layer;
+            newCharacter.gameObject.layer = gameObject.layer;
+
             newHolder.localScale = Vector3.one;
             newHolder.localRotation = Quaternion.identity;
 
-            newCharacter.transform.parent = newHolder;
             newCharacter.transform.localScale = Vector3.one;
             newCharacter.transform.localRotation = Quaternion.identity;
 
