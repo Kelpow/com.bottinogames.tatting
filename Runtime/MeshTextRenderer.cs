@@ -451,6 +451,10 @@ namespace Tatting
 
         }
 
+
+        //===== Editor Functionality =====
+
+        //Adds "create new gameobject" functionality for 3D Mesh Text Renderers
         [MenuItem("GameObject/3D Mesh Text",priority = 20)]
         static void ObjectCreationMenuItem()
         {
