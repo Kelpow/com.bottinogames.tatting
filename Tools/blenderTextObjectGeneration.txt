@@ -1,0 +1,22 @@
+import bpy
+
+allcharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.?!-'
+
+override = bpy.context.copy()
+override['selected_objects'] = list(bpy.context.scene.objects)
+bpy.ops.object.delete(override)
+
+x = 0
+y = 0
+
+for char in allcharacters:
+    font_curve = bpy.data.curves.new(type="FONT", name=char)
+    font_curve.body = char
+    font_curve.extrude = 0.1
+    font_obj = bpy.data.objects.new(name=char, object_data=font_curve)
+    bpy.context.scene.collection.objects.link(font_obj)
+    font_obj.location = [x,y,0]
+    if x > 25 :
+        x = 0
+        y -= 1
+    

@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: 2e1ed88f0b5ca484496e5b1c84998aca
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 100
+  forceTextureCase: -1
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: Zector
+  fontNames:
+  - Zector
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 2850421a581bd9d4dbc707dd737cfdda, type: 3}
+  customCharacters: 
+  fontRenderingMode: 3
+  ascentCalculationMode: 2
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -10,170 +11,123 @@ namespace Tatting
 
     [System.Serializable]
     [CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
-    public class MeshFont : ScriptableObject
+    public class MeshFont : ScriptableObject, ISerializationCallbackReceiver
     {
-
-        [SerializeField] private bool _caseless = false;
-        public bool caseless
-        {
-            get { return _caseless; }
-            set
-            {
-                if (value != _caseless)
-                {
-                    isDirty = true;
-                    _caseless = value;
-                }
-            }
-        }
-
-        [SerializeField] public float distanceBetweenCharacters = 1f;
-        [SerializeField] public Vector3 characterRotation;
-
-
-
-
-        public const int UPPERCASE_START = 26;
-        public const int UPPERCASE_END = 51;
-
-        public static bool isUpperDefault(int i) { return UPPERCASE_START <= i && i <= UPPERCASE_END; }
-
-        public readonly char[] defaultCharacters = {
-        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' '
-    };
-        public Mesh[] defaultCharactersMeshes = new Mesh[63];
-
-
-        public List<char> extraCharacters = new List<char>() { '-', ',', '.', '!', '?' };
-        public List<Mesh> extraMeshes = new List<Mesh>() { null, null, null, null, null };
-
-        public void RemoveExtra(int i)
-        {
-            extraCharacters.RemoveAt(i);
-            extraMeshes.RemoveAt(i);
-        }
-        public void AddExtra(char c)
-        {
-            extraCharacters.Add(c);
-            extraMeshes.Add(null);
-        }
-
-        public void ShiftExtra(int i, int dir)
-        {
-            int target = i + dir;
-            if (target >= 0 && target < extraCharacters.Count)
-            {
-                char tempC = extraCharacters[target];
-                Mesh tempM = extraMeshes[target];
-                extraCharacters[target] = extraCharacters[i];
-                extraMeshes[target] = extraMeshes[i];
-
-                extraCharacters[i] = tempC;
-                extraMeshes[i] = tempM;
-            }
-        }
-
-        public Mesh defaultMesh;
-
-
-        public bool isDirty;
-
-        private Dictionary<char, Mesh> _meshCharacters = null;
-        public Dictionary<char, Mesh> meshCharacters
+        private static CharacterInfo _zeroWidthCharacter;
+        public static CharacterInfo zeroWidthCharacter
         {
             get
             {
-                if (_meshCharacters == null || isDirty)
+                if (_zeroWidthCharacter == null)
                 {
-                    _meshCharacters = ToDictionary();
-                    isDirty = false;
+                    _zeroWidthCharacter = new CharacterInfo('~');
+                    _zeroWidthCharacter.mesh = CharacterInfo.emptyMesh;
+                    _zeroWidthCharacter.width = 0f;
                 }
-                return _meshCharacters;
+                return _zeroWidthCharacter;
             }
         }
 
-        public Dictionary<char, Mesh> ToDictionary()
+        //spacing to use for whitespace (' ') if the dictionary does not already contain a space character; 
+        public float whitespaceWidth = 1f;
+
+        public bool hasFallbackCharacter = false;
+
+
+        [SerializeField] private List<CharacterInfo> _dictionarySerializationHelper = new List<CharacterInfo>();
+        public Dictionary<char, CharacterInfo> characterDictionary = new Dictionary<char, CharacterInfo>();
+        private CharacterInfo _whitespaceCharacter;
+        public CharacterInfo whitespaceCharacter
         {
-            Dictionary<char, Mesh> newDictionary = new Dictionary<char, Mesh>();
-
-            for (int i = 0; i < defaultCharacters.Length; i++)
+            get
             {
-                if (caseless && isUpperDefault(i))
+                if (_whitespaceCharacter == null)
                 {
-                    newDictionary.Add(defaultCharacters[i], defaultCharactersMeshes[i - UPPERCASE_START]);
-                    continue;
+                    _whitespaceCharacter = new CharacterInfo(' ');
+                    _whitespaceCharacter.width = whitespaceWidth;
+                    _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
                 }
+                else if (_whitespaceCharacter.width != whitespaceWidth)
+                    _whitespaceCharacter.width = whitespaceWidth;
 
-                if (defaultCharactersMeshes[i] == null)
-                    newDictionary.Add(defaultCharacters[i], defaultMesh);
-                else
-                {
-                    newDictionary.Add(defaultCharacters[i], defaultCharactersMeshes[i]);
-                }
+                return _whitespaceCharacter;
             }
-
-            for (int i = 0; i < extraCharacters.Count; i++)
-            {
-                if (extraMeshes[i] == null)
-                    newDictionary.Add(extraCharacters[i], defaultMesh);
-                else
-                {
-                    newDictionary.Add(extraCharacters[i], extraMeshes[i]);
-
-                    characterBounds.min = Vector3.Min(characterBounds.min, extraMeshes[i].bounds.min);
-                    characterBounds.max = Vector3.Max(characterBounds.max, extraMeshes[i].bounds.max);
-                }
-            }
-
-            return newDictionary;
         }
-
-
-        [SerializeField] public Bounds characterBounds;
-
-        public void SetAutomaticCharacterBounds()
+        [SerializeField] private CharacterInfo _fallbackCharacter;
+        public CharacterInfo fallbackCharacter
         {
-            bool boundsSet = false;
-
-            foreach (Mesh m in defaultCharactersMeshes)
+            get
             {
-                if (m == null)
-                    continue;
-
-                if (!boundsSet)
+                if (hasFallbackCharacter)
                 {
-                    characterBounds = m.bounds;
-                    boundsSet = true;
+                    return _fallbackCharacter;
                 }
                 else
                 {
-                    characterBounds.min = Vector3.Min(characterBounds.min, m.bounds.min);
-                    characterBounds.max = Vector3.Max(characterBounds.max, m.bounds.max);
-                }
-            }
-            foreach (Mesh m in extraMeshes)
-            {
-                if (m == null)
-                    continue;
-
-                if (!boundsSet)
-                {
-                    characterBounds = m.bounds;
-                    boundsSet = true;
-                }
-                else
-                {
-                    characterBounds.min = Vector3.Min(characterBounds.min, m.bounds.min);
-                    characterBounds.max = Vector3.Max(characterBounds.max, m.bounds.max);
+                    return zeroWidthCharacter;
                 }
             }
         }
 
+
+
+
+        public CharacterInfo GetCharacterInfo(char c)
+        {
+            if (characterDictionary.ContainsKey(c))
+            {
+                return characterDictionary[c];
+            } 
+            else if (c == ' ')
+            {
+                return whitespaceCharacter;
+            } 
+            else
+            {
+                return fallbackCharacter;
+            }
+        }
+
+
+
+        public void OnBeforeSerialize()
+        {
+            _dictionarySerializationHelper.Clear();
+            foreach (var kvp in characterDictionary)
+                _dictionarySerializationHelper.Add(kvp.Value);
+        }
+
+        public void OnAfterDeserialize()
+        {
+            characterDictionary = new Dictionary<char, CharacterInfo>();
+            foreach (var info in _dictionarySerializationHelper)
+                characterDictionary.Add(info.character, info);
+
+        }
+
+
+
+
+
+
+        [System.Serializable]
+        public class CharacterInfo
+        {
+            private static Mesh _emptyMesh;
+            public static Mesh emptyMesh { get { if (!_emptyMesh) { _emptyMesh = new Mesh(); } return _emptyMesh; } }
+
+            public char character;
+            public Mesh mesh;
+            public float width;
+
+            public CharacterInfo(char c)
+            {
+                character = c;
+                mesh = null;
+                width = 0f;
+            }
+        }
     }
-
-
 
 
 
@@ -188,307 +142,316 @@ namespace Tatting
     public class TattingFontInspector : Editor
     {
 
-        string charToAdd = "";
-
-
         public override void OnInspectorGUI()
         {
             MeshFont font = (MeshFont)target;
 
-
-            GUILayout.Space(15);
-            GUI.enabled = !MeshFontSetupWizard.instance;
-            if (GUILayout.Button("Launch Setup Wizard"))
-                MeshFontSetupWizard.CreateNewWizard(font, this);
-
-            if (MeshFontSetupWizard.instance)
-            {
-                GUILayout.Space(15);
-                GUILayout.Label("Waiting for Setup Wizard...", EditorStyles.boldLabel);
-
-                return;
-            }
-
-
-
-
-            //===== Settings =====
-
-            GUILayout.Space(15);
-            GUILayout.Label("Settings", EditorStyles.boldLabel);
-
-            EditorGUI.BeginChangeCheck();
-            font.caseless = EditorGUILayout.Toggle("Caseless", font.caseless);
-            if (EditorGUI.EndChangeCheck())
-                EditorUtility.SetDirty(font);
-
-            EditorGUI.BeginChangeCheck();
-            font.distanceBetweenCharacters = EditorGUILayout.FloatField("Character separation", font.distanceBetweenCharacters);
-            font.characterRotation = EditorGUILayout.Vector3Field("Character rotation", font.characterRotation);
-
-            font.characterBounds = EditorGUILayout.BoundsField("Character bounds", font.characterBounds);
-
-            if (GUILayout.Button("Set bounds automatically"))
-                font.SetAutomaticCharacterBounds();
-
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                EditorUtility.SetDirty(font);
-                foreach (MeshTextRenderer rend in Resources.FindObjectsOfTypeAll<MeshTextRenderer>())
-                    if (!EditorUtility.IsPersistent(rend.transform.root.gameObject))
-                        rend.UpdateAllCharacterPositions();
-            }
-
-
-
-
-
-            //===== Default Characters =====
-            GUILayout.Space(15);
-            GUILayout.Label("Default Characters", EditorStyles.boldLabel);
-
-            EditorGUI.BeginChangeCheck();
-
-            for (int i = 0; i < font.defaultCharacters.Length; i++)
-            {
-                DrawCharacterMeshCombo(true, i, font);
-            }
-
-
-            //===== Non-Default Characters =====
-            GUILayout.Space(15);
-            GUILayout.Label("Non-Default Characters", EditorStyles.boldLabel);
-
-            for (int i = 0; i < font.extraCharacters.Count; i++)
-            {
-                DrawCharacterMeshCombo(false, i, font);
-            }
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                EditorUtility.SetDirty(font);
-                font.isDirty = true;
-
-                foreach (MeshTextRenderer rend in Resources.FindObjectsOfTypeAll<MeshTextRenderer>())
-                    if (!EditorUtility.IsPersistent(rend.transform.root.gameObject))
-                        rend.SendMessage("RefreshCharacters");
-            }
-
-
-            GUI.enabled = true;
-            GUILayout.Space(5);
-
+            Undo.RecordObject(font, "Tatting MeshFont Inspector");
             EditorGUI.BeginChangeCheck();
 
             GUILayout.BeginHorizontal();
             {
-
-                string newCharToAdd = GUILayout.TextField(charToAdd, GUILayout.Width(20));
-
-                int removal = newCharToAdd.LastIndexOfAny(font.defaultCharacters);
-                if (removal == -1)
+                if (GUILayout.Button("Edit Character Set"))
                 {
-                    if (newCharToAdd.Length > 0)
-                    {
-                        if (!font.extraCharacters.Contains(newCharToAdd[newCharToAdd.Length - 1]))
-                            charToAdd = newCharToAdd[newCharToAdd.Length - 1].ToString();
-                    }
-                    else
-                        charToAdd = "";
+                    PopupWindow.Show(GUILayoutUtility.GetLastRect(), new CharacterSetPopupWindow(font));
+                }
+                if (GUILayout.Button("Automatic Setup"))
+                {
+                    PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AutomaticSetupPopupWindow(font));
                 }
 
-                GUI.enabled = charToAdd.Length != 0;
-                if (GUILayout.Button("Add Extra Character"))
-                {
-                    font.AddExtra(charToAdd[0]);
-                }
             }
             GUILayout.EndHorizontal();
+
+
+            GUILayout.BeginVertical("HelpBox");
+            {
+                font.whitespaceWidth = EditorGUILayout.FloatField("Whitespace width", font.whitespaceWidth);
+                font.hasFallbackCharacter = EditorGUILayout.Toggle("Fallback Character", font.hasFallbackCharacter);
+                if (font.hasFallbackCharacter)
+                {
+                    GUILayout.BeginVertical("HelpBox");
+                    {
+                        font.fallbackCharacter.mesh = (Mesh)EditorGUILayout.ObjectField("Fallback Mesh", font.fallbackCharacter.mesh, typeof(Mesh), allowSceneObjects: false);
+                        font.fallbackCharacter.width = EditorGUILayout.FloatField("Width", font.fallbackCharacter.width);
+                    }
+                    GUILayout.EndVertical();
+                }
+            }
+            GUILayout.EndVertical();
+
+            string set = "";
+            foreach (var kvp in font.characterDictionary)
+                set += kvp.Key;
+
+            for (int y = 0; y < set.Length; y+=3)
+            {
+                GUILayout.BeginHorizontal();
+                {
+                    for (int x = 0; x < 3; x++)
+                    {
+                        if (x + y < set.Length)
+                        {
+                            char c = set[y + x];
+                            GUILayout.BeginVertical("HelpBox");
+                            {
+                                GUILayout.BeginHorizontal();
+                                {
+
+                                    GUILayout.Label(c.ToString(), GUILayout.Width(14));
+                                    font.characterDictionary[c].mesh = (Mesh)EditorGUILayout.ObjectField(font.characterDictionary[c].mesh, typeof(Mesh), allowSceneObjects: false);
+                                    GUILayout.Space(4);
+                                }
+                                GUILayout.EndHorizontal();
+
+                                GUILayout.BeginHorizontal();
+                                {
+                                    GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+                                    if (Event.current.isMouse && Event.current.button == 1 && Event.current.rawType == EventType.MouseUp && GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
+                                    {
+                                        GenericMenu gen = new GenericMenu();
+                                        if (font.characterDictionary[c].mesh)
+                                            gen.AddItem(new GUIContent("Set Automatically", "Sets the width automatically using the mesh bounds"), false, () => { font.characterDictionary[c].width = font.characterDictionary[c].mesh.bounds.max.x; });
+                                        else
+                                            gen.AddDisabledItem(new GUIContent("Set Automatically", "Sets the width automatically using bounds.max.x"));
+
+                                        gen.ShowAsContext();
+                                    }
+                                    font.characterDictionary[c].width = EditorGUILayout.FloatField(font.characterDictionary[c].width);
+                                }
+                                GUILayout.EndHorizontal();
+
+                                if (font.characterDictionary[c].mesh)
+                                {
+                                    GUILayout.Box(AssetPreview.GetAssetPreview(font.characterDictionary[c].mesh), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true), GUILayout.MinWidth(70), GUILayout.MinHeight(70));
+                                }
+                            }
+                            GUILayout.EndVertical();
+                        }
+                        else
+                        {
+                            GUI.color = Color.clear;
+                            GUI.enabled = false;
+                            GUILayout.BeginVertical("HelpBox");
+                            {
+
+                                GUILayout.BeginHorizontal();
+                                {
+                                    GUILayout.Label("a", GUILayout.Width(14));
+                                    EditorGUILayout.ObjectField(null, typeof(Mesh), allowSceneObjects: false);
+                                    GUILayout.Space(4);
+                                }
+                                GUILayout.EndHorizontal();
+                                GUILayout.BeginHorizontal();
+                                {
+                                    GUILayout.Label("Width", GUILayout.ExpandWidth(false));
+                                    EditorGUILayout.FloatField(0f);
+                                }
+                                GUILayout.EndHorizontal();
+                                GUILayout.Box(GUIContent.none, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true), GUILayout.MinWidth(70), GUILayout.MinHeight(70));
+                            }
+                            GUILayout.EndVertical();
+                            GUI.color = Color.white;
+                            GUI.enabled = false;
+                        }
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
 
             if (EditorGUI.EndChangeCheck())
             {
-                EditorUtility.SetDirty(font);
-            }
-        }
-
-
-
-        private void DrawCharacterMeshCombo(bool isDefault, int i, MeshFont font)
-        {
-            if (font.caseless && isDefault)
-                if (MeshFont.isUpperDefault(i))
-                    return;
-
-            char c = isDefault ?
-                font.defaultCharacters[i] :
-                font.extraCharacters[i];
-
-            Mesh m = isDefault ?
-                font.defaultCharactersMeshes[i] :
-                font.extraMeshes[i];
-
-            bool isSpace = (c == ' ');
-
-            GUILayout.BeginHorizontal();
-            {
-
-                GUI.enabled = false;
-                GUILayout.TextField(c.ToString(), GUILayout.Width(20));
-
-
-                GUI.enabled = !isSpace;
-                if (isDefault)
-                {
-                    font.defaultCharactersMeshes[i] = EditorGUILayout.ObjectField(m, typeof(Mesh), allowSceneObjects: false) as Mesh;
-                }
-                else
-                {
-                    font.extraMeshes[i] = EditorGUILayout.ObjectField(m, typeof(Mesh), allowSceneObjects: false) as Mesh;
-                }
-
-
-                if (!isDefault)
-                {
-                    if (GUILayout.Button("X", GUILayout.Width(20)))
-                    {
-                        font.RemoveExtra(i);
-                    }
-
-                    GUI.enabled = i != 0;
-                    if (GUILayout.Button("▲", GUILayout.Width(20)))
-                    {
-                        font.ShiftExtra(i, -1);
-                    }
-
-                    GUI.enabled = i != font.extraCharacters.Count - 1;
-                    if (GUILayout.Button("▼", GUILayout.Width(20)))
-                    {
-                        font.ShiftExtra(i, 1);
-                    }
-                }
-            }
-            GUILayout.EndHorizontal();
-
-            if (isDefault)
-            {
-                if (i == MeshFont.UPPERCASE_START - 1 || i == MeshFont.UPPERCASE_END)
-                    GUILayout.Space(8);
-            }
-
-
+                foreach (MeshText text in Resources.FindObjectsOfTypeAll<MeshText>())
+                    if (!EditorUtility.IsPersistent(text.transform.root.gameObject))
+                        text.SendMessage("FontHasChanged");
+            }   
         }
     }
 
-
-
-
-    public class MeshFontSetupWizard : EditorWindow
+    public class CharacterSetPopupWindow : PopupWindowContent
     {
-        public static MeshFontSetupWizard instance;
-
-        public static void CreateNewWizard(MeshFont font, TattingFontInspector inspector)
-        {
-            instance = EditorWindow.CreateInstance<MeshFontSetupWizard>();
-            instance.SetSize(new Vector2(300f, 85f));
-            instance.font = font;
-            instance.titleContent = new GUIContent("Tatting Setup Wizard: " + font.name);
-            instance.inspector = inspector;
-            instance.ShowUtility();
-        }
-
-        public void OnLostFocus() { Focus(); }
-        public void OnDisable() { inspector.Repaint(); }
-
-        public void SetSize(Vector2 size) { this.minSize = size; this.maxSize = size; }
-
-        enum States
-        {
-            Start,
-            Automatic,
-            Manual,
-            Ending
-        }
-
-
+        string startSet;
+        string set;
         MeshFont font;
-        TattingFontInspector inspector;
 
-        States currentState = States.Start;
-
-        //Automatic
-        bool importAsCaseless = false;
-        string path = "";
-        List<Mesh> loadedMeshes = null;
-
-        List<Mesh> importedMeshes;
-
-        public void OnGUI()
+        public CharacterSetPopupWindow(MeshFont font)
         {
-            GUILayout.Space(4);
+            this.font = font;
+            set = "";
+            foreach (var kvp in font.characterDictionary)
+                set += kvp.Key;
 
-            switch (currentState)
+            startSet = set;
+        }
+
+        public override Vector2 GetWindowSize()
+        {
+            return new Vector2(200, 100);
+        }
+
+        public override void OnGUI(Rect rect)
+        {
+            if (Event.current != null && Event.current.isKey && Event.current.keyCode == KeyCode.Return)
+                editorWindow.Close();
+
+            set = GUILayout.TextArea(set,GUILayout.Height(74));
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Submit"))
+                editorWindow.Close();
+            if(GUILayout.Button("Cancel"))
             {
-                case States.Start:
+                set = startSet;
+                editorWindow.Close();
+            }
+            GUILayout.EndHorizontal();
+        }
 
-                    GUI.enabled = true;
-                    if (GUILayout.Button("Automatic Setup", GUILayout.Height(55)))
-                        currentState = States.Automatic;
+        public override void OnClose()
+        {
+            Dictionary<char, MeshFont.CharacterInfo> newDict = new Dictionary<char, MeshFont.CharacterInfo>();
+            if (set.Length > 0)
+            {
+                char[] sortedSet = set.ToCharArray();
+                Array.Sort(sortedSet);
+                foreach (char c in sortedSet)
+                {
+                    if (c == '\n')
+                        continue;
 
-                    break;
-
-                case States.Automatic:
-                    if (loadedMeshes == null)
+                    if (!newDict.ContainsKey(c))
                     {
-                        importAsCaseless = EditorGUILayout.Toggle("Import as caseless", importAsCaseless);
+                        if (font.characterDictionary.ContainsKey(c))
+                            newDict.Add(c, font.characterDictionary[c]);
+                        else
+                            newDict.Add(c, new MeshFont.CharacterInfo(c));
+                    }
+                }
+            }
+            font.characterDictionary = newDict;
+        }
+    }
 
-                        if (GUILayout.Button("Open 3D object file", GUILayout.Height(55)))
+    public class AutomaticSetupPopupWindow : PopupWindowContent
+    {
+        MeshFont font;
+
+        public AutomaticSetupPopupWindow(MeshFont font)
+        {
+            this.font = font;
+        }
+
+        public override Vector2 GetWindowSize()
+        {
+            return new Vector2(300, 85);
+        }
+
+        bool overwrite;
+        bool overwriteSet;
+
+        public override void OnGUI(Rect rect)
+        {
+            GUILayout.Space(5);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("Automatic Font Setup", EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8);
+
+            overwrite = GUILayout.Toggle(overwrite, "Overwrite");
+            GUILayout.BeginHorizontal();
+            GUI.enabled = overwrite;
+            GUILayout.Space(10);
+            overwriteSet = GUILayout.Toggle(overwriteSet, "Overwrite Character Set");
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Cancel"))
+                editorWindow.Close();
+            if (GUILayout.Button("Load File"))
+            {
+
+                string fontPath = AssetDatabase.GetAssetPath(font);
+                string path = EditorUtility.OpenFilePanel("Open 3D object file", fontPath.Remove(fontPath.LastIndexOf('/')), "obj,fbx,blend");
+
+                if(path != "")
+                {
+                    string relativePath = "Assets" + path.Replace(Application.dataPath, "");
+                    UnityEngine.Object[] objects = AssetDatabase.LoadAllAssetsAtPath(relativePath);
+
+                    List<Mesh> loadedMeshes = new List<Mesh>();
+                    for (int i = 0; i < objects.Length; i++)
+                    {
+                        Mesh mesh = objects[i] as Mesh;
+                        if (mesh)
                         {
-                            string fontPath = AssetDatabase.GetAssetPath(font);
-                            path = EditorUtility.OpenFilePanel("Open 3D object file", fontPath.Remove(fontPath.LastIndexOf('/')), "obj,fbx,blend");
+                            loadedMeshes.Add(mesh);
+                        }
+                    }
 
-                            if (path != "")
+                    for (int i = 0; i < loadedMeshes.Count; i++)
+                    {
+                        Mesh mesh = loadedMeshes[i];
+                        if (mesh.name.Length != 1)
+                        {
+                            loadedMeshes.RemoveAt(i);
+                            i--;
+                            continue;
+                        }
+                        char c = mesh.name[0];
+                        if (!overwrite)
+                        {
+                            if (font.characterDictionary.ContainsKey(c) && font.characterDictionary[c].mesh != null)
                             {
-                                font.caseless = importAsCaseless;
+                                loadedMeshes.RemoveAt(i);
+                                i--;
+                                continue;
+                            }
+                            else
+                                continue;
+                        }
+                    }
 
-                                string relativePath = "Assets" + path.Replace(Application.dataPath, "");
-                                Object[] objects = AssetDatabase.LoadAllAssetsAtPath(relativePath);
-                                loadedMeshes = new List<Mesh>();
-                                for (int i = 0; i < objects.Length; i++)
+                    if(loadedMeshes.Count > 0)
+                    {
+                        if (overwriteSet)
+                        {
+                            Dictionary<char, MeshFont.CharacterInfo> newDict = new Dictionary<char, MeshFont.CharacterInfo>();
+                            foreach (Mesh mesh in loadedMeshes)
+                            {
+                                char c = mesh.name[0];
+                                if (newDict.ContainsKey(c))
+                                    continue;
+
+                                MeshFont.CharacterInfo info = new MeshFont.CharacterInfo(c);
+                                info.mesh = mesh;
+                                info.width = mesh.bounds.max.x;
+                                newDict.Add(c, info);
+                            }
+                            font.characterDictionary = newDict;
+                        }
+                        else
+                        {
+                            foreach (Mesh mesh in loadedMeshes)
+                            {
+                                char c = mesh.name[0];
+                                if (font.characterDictionary.ContainsKey(c))
+                                    font.characterDictionary[c].mesh = mesh;
+                                else
                                 {
-                                    Mesh mesh = objects[i] as Mesh;
-                                    if (mesh)
-                                    {
-                                        loadedMeshes.Add(mesh);
-                                    }
-                                }
-
-                                foreach (Mesh mesh in loadedMeshes)
-                                {
-                                    if (mesh.name.Length > 1)
-                                        continue;
-
-                                    for (int i = 0; i < font.defaultCharacters.Length; i++)
-                                    {
-                                        if (importAsCaseless && MeshFont.isUpperDefault(i))
-                                            continue;
-
-                                        if ((importAsCaseless ? mesh.name.ToLower()[0] : mesh.name[0]) == font.defaultCharacters[i])
-                                        {
-                                            font.defaultCharactersMeshes[i] = mesh;
-                                        }
-                                    }
+                                    MeshFont.CharacterInfo info = new MeshFont.CharacterInfo(c);
+                                    info.mesh = mesh;
+                                    info.width = mesh.bounds.max.x;
+                                    font.characterDictionary.Add(c, info);
                                 }
                             }
                         }
                     }
-                    else
-                    {
-                        this.Close();
-                    }
-                    break;
+                }
             }
+            GUILayout.EndHorizontal();
         }
+
     }
 #endif
 
