@@ -11,7 +11,7 @@ namespace Tatting
     /// <summary>
     /// A renderer for displaying Tatting 3D mesh text's.
     /// </summary>
-    [ExecuteAlways, DisallowMultipleComponent, RequireComponent (typeof(MeshRenderer), typeof(MeshFilter) )]
+    [ExecuteAlways, DisallowMultipleComponent, RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
     public class MeshText : MonoBehaviour
     {
         const int TOP = 1;
@@ -23,21 +23,21 @@ namespace Tatting
 
         public enum Alignment : int
         {
-            TopLeft         =   TOP+LFT,
-            TopCenter       =   TOP+CEN,
-            TopRight        =   TOP+RIT,
-            MiddleLeft      =   MID+LFT,
-            MiddleCenter    =   MID+CEN,
-            MiddleRight     =   MID+RIT,
-            BottomLeft      =   BOT+LFT,
-            BottomCenter    =   BOT+CEN,
-            BottomRight     =   BOT+RIT
+            TopLeft = TOP + LFT,
+            TopCenter = TOP + CEN,
+            TopRight = TOP + RIT,
+            MiddleLeft = MID + LFT,
+            MiddleCenter = MID + CEN,
+            MiddleRight = MID + RIT,
+            BottomLeft = BOT + LFT,
+            BottomCenter = BOT + CEN,
+            BottomRight = BOT + RIT
         }
 
 
         //public
         public MeshFont font;
-        
+
         [SerializeField] [TextArea] private string text;
         public string Text
         {
@@ -57,7 +57,22 @@ namespace Tatting
         public Alignment alignment = Alignment.TopLeft;
 
 
+        [System.NonSerialized] public List<MeshTextEffectDelegate> effects = new List<MeshTextEffectDelegate>();
+
+
         //internal
+
+        [HideInInspector] [SerializeField] Mesh _mesh;
+        Mesh mesh
+        {
+            get
+            {
+                if (_mesh == null)
+                    _mesh = new Mesh();
+                return _mesh;
+            }
+        }
+
         CombineInstance[] combineArray = new CombineInstance[16];
         
         
@@ -67,6 +82,7 @@ namespace Tatting
         private void Awake()
         {
             filter = GetComponent<MeshFilter>();
+            filter.sharedMesh = mesh;
         }
 
         private void UpdateMesh()
@@ -98,7 +114,25 @@ namespace Tatting
 
                 MeshFont.CharacterInfo info = font.GetCharacterInfo(text[i]);
                 combineArray[i].mesh = info.mesh;
-                combineArray[i].transform = Matrix4x4.TRS(new Vector3(head.x, head.y, 0f), Quaternion.identity, Vector3.one);
+
+
+                Vector3 translation = new Vector3(head.x, head.y, 0f);
+                Quaternion rotation = Quaternion.identity;
+                Vector3 scale = Vector3.one;
+
+                if(effects != null)
+                {
+                    foreach (MeshTextEffectDelegate del in effects)
+                    {
+                        TRS trs = del.Invoke(head, i);
+
+                        translation += trs.translation;
+                        rotation *= trs.rotation;
+                        scale = Vector3.Scale(scale, trs.scale);
+                    }
+                }
+
+                combineArray[i].transform = Matrix4x4.TRS(translation,rotation,scale);
 
                 head.x += info.width;
             }
@@ -123,7 +157,7 @@ namespace Tatting
 
                 for (int i = 0; i < text.Length; i++)
                 {
-                    combineArray[i].transform = combineArray[i].transform * shift;
+                    combineArray[i].transform = shift * combineArray[i].transform;
                 }
             }
 
@@ -132,13 +166,32 @@ namespace Tatting
                 combineArray[i].mesh = MeshFont.CharacterInfo.emptyMesh;
             }
 
-            filter.mesh.CombineMeshes(combineArray);
+            mesh.CombineMeshes(combineArray);
         }
 
         private void OnValidate()
         {
             UpdateMesh();
         }
+
+
+
+        bool active;
+        private void Update()
+        {
+            UpdateMesh();
+            if (effects != null)
+            {
+                active = true;
+            } else if (active)
+            {
+                UpdateMesh();
+                active = false;
+            }
+        }
+
+
+
 
 
         //internal

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20e25990b3c17434a9352319580b9dde, type: 3}
   m_Name: fredoka one bubble
   m_EditorClassIdentifier: 
-  whitespaceWidth: 0.4
-  hasFallbackCharacter: 0
+  whitespaceWidth: 0.6
+  hasFallbackCharacter: 1
   _dictionarySerializationHelper:
   - character: 83
     mesh: {fileID: -9074724860412756288, guid: fd363cb25b3c66643b9c1e69006be243, type: 3}

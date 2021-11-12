@@ -28,7 +28,7 @@ namespace Tatting
             }
         }
 
-        //spacing to use for whitespace (' ') if the dictionary does not already contain a space character; 
+        //spacing to use for whitespace (' ') if the dictionary does not already contain a space character
         public float whitespaceWidth = 1f;
 
         public bool hasFallbackCharacter = false;
@@ -46,8 +46,13 @@ namespace Tatting
                     _whitespaceCharacter = new CharacterInfo(' ');
                     _whitespaceCharacter.width = whitespaceWidth;
                     _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
+                } else if (_whitespaceCharacter.mesh == null)
+                {
+                    _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
                 }
-                else if (_whitespaceCharacter.width != whitespaceWidth)
+
+
+                if (_whitespaceCharacter.width != whitespaceWidth)
                     _whitespaceCharacter.width = whitespaceWidth;
 
                 return _whitespaceCharacter;
@@ -147,6 +152,7 @@ namespace Tatting
             MeshFont font = (MeshFont)target;
 
             Undo.RecordObject(font, "Tatting MeshFont Inspector");
+
             EditorGUI.BeginChangeCheck();
 
             GUILayout.BeginHorizontal();
@@ -261,12 +267,20 @@ namespace Tatting
 
             if (EditorGUI.EndChangeCheck())
             {
-                foreach (MeshText text in Resources.FindObjectsOfTypeAll<MeshText>())
-                    if (!EditorUtility.IsPersistent(text.transform.root.gameObject))
-                        text.SendMessage("FontHasChanged");
+                EditorUtility.SetDirty(font);
+                UpdateAllTextMeshesSharingFont(font);
             }   
         }
+
+
+        public static void UpdateAllTextMeshesSharingFont(MeshFont font)
+        {
+            foreach (MeshText text in Resources.FindObjectsOfTypeAll<MeshText>())
+                if (!EditorUtility.IsPersistent(text.transform.root.gameObject) && text.font == font)
+                    text.SendMessage("FontHasChanged");
+        }
     }
+
 
     public class CharacterSetPopupWindow : PopupWindowContent
     {
@@ -308,6 +322,9 @@ namespace Tatting
 
         public override void OnClose()
         {
+            if (set == startSet)
+                return;
+
             Dictionary<char, MeshFont.CharacterInfo> newDict = new Dictionary<char, MeshFont.CharacterInfo>();
             if (set.Length > 0)
             {
@@ -328,6 +345,8 @@ namespace Tatting
                 }
             }
             font.characterDictionary = newDict;
+
+            TattingFontInspector.UpdateAllTextMeshesSharingFont(font);
         }
     }
 
@@ -447,6 +466,8 @@ namespace Tatting
                             }
                         }
                     }
+
+                    TattingFontInspector.UpdateAllTextMeshesSharingFont(font);
                 }
             }
             GUILayout.EndHorizontal();

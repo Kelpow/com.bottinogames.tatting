@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20e25990b3c17434a9352319580b9dde, type: 3}
   m_Name: zector
   m_EditorClassIdentifier: 
-  characterSpacing: 0
   whitespaceWidth: 1
+  hasFallbackCharacter: 0
   _dictionarySerializationHelper: []
-  fallbackCharacter:
+  _fallbackCharacter:
     character: 0
     mesh: {fileID: 0}
     width: 0
