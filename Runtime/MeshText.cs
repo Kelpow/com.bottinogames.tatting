@@ -139,26 +139,25 @@ namespace Tatting
             extents.x = Mathf.Max(head.x, extents.x);
             extents.y += lineSpacing;
 
-            if (alignment != Alignment.TopLeft)
+            float x = 0f;
+            if (((int)alignment & CEN) != 0)
+                x = -extents.x / 2;
+            if (((int)alignment & RIT) != 0)
+                x = -extents.x;
+
+            float y = 0f;
+            if (((int)alignment & TOP) != 0)
+                y = -lineSpacing;
+            if (((int)alignment & MID) != 0)
+                y = -extents.y / 2;
+            if (((int)alignment & BOT) != 0)
+                y = -extents.y;
+
+            Matrix4x4 shift = Matrix4x4.Translate(new Vector3(x, y, 0f));
+
+            for (int i = 0; i < text.Length; i++)
             {
-                float x = 0f;
-                if (((int)alignment & CEN) != 0)
-                    x = -extents.x / 2;
-                if (((int)alignment & RIT) != 0)
-                    x = -extents.x;
-
-                float y = 0f;
-                if (((int)alignment & MID) != 0)
-                    y = -extents.y / 2;
-                if (((int)alignment & BOT) != 0)
-                    y = -extents.y;
-
-                Matrix4x4 shift = Matrix4x4.Translate(new Vector3(x, y, 0f));
-
-                for (int i = 0; i < text.Length; i++)
-                {
-                    combineArray[i].transform = shift * combineArray[i].transform;
-                }
+                combineArray[i].transform = shift * combineArray[i].transform;
             }
 
             for (int i = text.Length; i < combineArray.Length; i++)
@@ -200,27 +199,20 @@ namespace Tatting
             UpdateMesh();
         }
 
-        [ContextMenu("Go")]
-        void Test()
+        [ContextMenu("Force Mesh Update")]
+        public void ForceMeshUpdate()
         {
             UpdateMesh();
         }
 
-    }
-
-
-
-
-
-    // ||||||||||||||||||||| E D I T O R ||||||||||||||||||||| 
-    
 
 #if UNITY_EDITOR
-    [CustomEditor(typeof(MeshText))]
-    public class MeshTextInspector : Editor
-    {
+        [ContextMenu("Force Mesh Update")]
+        void SetNameFromText()
+        {
+            gameObject.name = text ;
+        }
+#endif
 
     }
-
-#endif
 }
