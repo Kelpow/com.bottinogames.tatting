@@ -207,7 +207,7 @@ namespace Tatting
 
 
 #if UNITY_EDITOR
-        [ContextMenu("Force Mesh Update")]
+        [ContextMenu("Set name from text")]
         void SetNameFromText()
         {
             gameObject.name = text ;
