@@ -62,7 +62,7 @@ namespace Tatting
 
         //internal
 
-        [HideInInspector] [SerializeField] Mesh _mesh;
+        [HideInInspector] Mesh _mesh;
         Mesh mesh
         {
             get
@@ -83,6 +83,7 @@ namespace Tatting
         {
             filter = GetComponent<MeshFilter>();
             filter.sharedMesh = mesh;
+            UpdateMesh();
         }
 
         private void UpdateMesh()
