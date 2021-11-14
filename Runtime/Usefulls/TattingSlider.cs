@@ -27,11 +27,11 @@ public class TattingSlider : MonoBehaviour
         {
             for (int o = 0; o < i; o++)
             {
-                displayStrings[i] += offCharacter;
+                displayStrings[i] += onCharacter;
             }
             for (int o = i; o < max; o++)
             {
-                displayStrings[i] += onCharacter;
+                displayStrings[i] += offCharacter;
             }
         }
 
