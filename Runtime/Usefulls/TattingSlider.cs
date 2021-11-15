@@ -8,32 +8,18 @@ using Tatting;
 public class TattingSlider : MonoBehaviour
 {
     MeshText text;
-
-    public int max;
+    [Min(0)]
     public int value;
 
-    [SerializeField] private char onCharacter;
-    [SerializeField] private char offCharacter;
-
-    string[] displayStrings;
+    public string[] displayStrings;
+    private int max { get { return displayStrings.Length - 1; } }
 
     private void Start()
     {
         text = GetComponent<MeshText>();
-        value = Mathf.Clamp(value, 0, max);
-        displayStrings = new string[max+1];
 
-        for (int i = 0; i < max+1; i++)
-        {
-            for (int o = 0; o < i; o++)
-            {
-                displayStrings[i] += onCharacter;
-            }
-            for (int o = i; o < max; o++)
-            {
-                displayStrings[i] += offCharacter;
-            }
-        }
+        value = Mathf.Clamp(value, 0, max);
+
 
         SetValue(value);
     }
@@ -63,9 +49,17 @@ public class TattingSlider : MonoBehaviour
     [RequireComponent(typeof(TattingSlider))]
     public class Behaviour : MonoBehaviour
     {
-        private void Awake()
+        protected TattingSlider slider;
+
+        private void OnEnable()
         {
-            GetComponent<TattingSlider>().valueChanged.AddListener(OnValueChange);
+            slider = GetComponent<TattingSlider>();
+            slider.valueChanged.AddListener(OnValueChange);
+        }
+
+        private void OnDisable()
+        {
+            slider.valueChanged.RemoveListener(OnValueChange);
         }
 
         public virtual void OnValueChange(int max, int value) {}
