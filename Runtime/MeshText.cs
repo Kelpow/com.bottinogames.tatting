@@ -11,7 +11,7 @@ namespace Tatting
     /// <summary>
     /// A renderer for displaying Tatting 3D mesh text's.
     /// </summary>
-    [ExecuteAlways, DisallowMultipleComponent, RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
+    [ExecuteAlways, DisallowMultipleComponent, RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
     public class MeshText : MonoBehaviour
     {
         const int TOP = 1;
@@ -83,11 +83,21 @@ namespace Tatting
         {
             filter = GetComponent<MeshFilter>();
             filter.sharedMesh = mesh;
+
+            if(combineArray == null)
+                combineArray = new CombineInstance[16];
+            if (text == null)
+                text = "";
+
             UpdateMesh();
         }
 
         private void UpdateMesh()
         {
+            if (!font)
+                return;
+
+
             if (text.Length > combineArray.Length)
             {
                 int l = combineArray.Length;
@@ -208,11 +218,26 @@ namespace Tatting
 
 
 #if UNITY_EDITOR
+
+        //===== Editor Functionality =====
+
+
         [ContextMenu("Set name from text")]
         void SetNameFromText()
         {
             gameObject.name = text ;
         }
+
+
+        //Adds "create new gameobject" functionality for 3D Mesh Text Renderers
+        [MenuItem("GameObject/3D Mesh Text", priority = 20)]
+        static void ObjectCreationMenuItem()
+        {
+            GameObject newTatting = new GameObject("3D Mesh Text", typeof(MeshFilter),typeof(MeshRenderer),typeof(MeshText));
+            newTatting.transform.position = SceneView.lastActiveSceneView.pivot;
+            newTatting.GetComponent<MeshText>().text = "Mesh Text";
+        }
+
 #endif
 
     }
