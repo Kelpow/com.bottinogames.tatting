@@ -31,7 +31,7 @@ public class TattingSlider : MonoBehaviour
         this.value = Mathf.Clamp(value, 0, max);
         text.Text = displayStrings[this.value];
         if (valueChanged != null)
-            valueChanged.Invoke(max, value);
+            valueChanged.Invoke(max, this.value);
     }
 
     [ContextMenu("Increment")]
