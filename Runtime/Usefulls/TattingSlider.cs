@@ -24,7 +24,7 @@ public class TattingSlider : MonoBehaviour
         SetValue(value);
     }
 
-    public UnityEngine.Events.UnityEvent<int,int> valueChanged;
+    public System.Action<int,int> valueChanged;
 
     public void SetValue(int value)
     {
@@ -54,12 +54,12 @@ public class TattingSlider : MonoBehaviour
         private void OnEnable()
         {
             slider = GetComponent<TattingSlider>();
-            slider.valueChanged.AddListener(OnValueChange);
+            slider.valueChanged  += OnValueChange;
         }
 
         private void OnDisable()
         {
-            slider.valueChanged.RemoveListener(OnValueChange);
+            slider.valueChanged -= OnValueChange;
         }
 
         public virtual void OnValueChange(int max, int value) {}
