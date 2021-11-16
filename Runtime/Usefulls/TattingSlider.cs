@@ -14,10 +14,14 @@ public class TattingSlider : MonoBehaviour
     public string[] displayStrings;
     private int max { get { return displayStrings.Length - 1; } }
 
-    private void Start()
+
+    private void OnEnable()
     {
         text = GetComponent<MeshText>();
+    }
 
+    private void Start()
+    {
         value = Mathf.Clamp(value, 0, max);
 
 
