@@ -153,6 +153,13 @@ namespace Tatting
 
             Undo.RecordObject(font, "Tatting MeshFont Inspector");
 
+
+
+            string set = "";
+            foreach (var kvp in font.characterDictionary)
+                set += kvp.Key;
+
+
             EditorGUI.BeginChangeCheck();
 
             GUILayout.BeginHorizontal();
@@ -165,7 +172,10 @@ namespace Tatting
                 {
                     PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AutomaticSetupPopupWindow(font));
                 }
-
+                if (GUILayout.Button("Automatic Kerning"))
+                {
+                    PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AutomaticKerningPopupWindow(font));
+                }
             }
             GUILayout.EndHorizontal();
 
@@ -186,9 +196,6 @@ namespace Tatting
             }
             GUILayout.EndVertical();
 
-            string set = "";
-            foreach (var kvp in font.characterDictionary)
-                set += kvp.Key;
 
             for (int y = 0; y < set.Length; y+=3)
             {
@@ -217,9 +224,9 @@ namespace Tatting
                                     {
                                         GenericMenu gen = new GenericMenu();
                                         if (font.characterDictionary[c].mesh)
-                                            gen.AddItem(new GUIContent("Set Automatically", "Sets the width automatically using the mesh bounds"), false, () => { font.characterDictionary[c].width = font.characterDictionary[c].mesh.bounds.max.x; });
+                                            gen.AddItem(new GUIContent("Set Automatically From Bounds", "Sets the width automatically using the mesh bounds"), false, () => { font.characterDictionary[c].width = font.characterDictionary[c].mesh.bounds.max.x; });
                                         else
-                                            gen.AddDisabledItem(new GUIContent("Set Automatically", "Sets the width automatically using bounds.max.x"));
+                                            gen.AddDisabledItem(new GUIContent("Set Automatically From Bounds", "Sets the width automatically using bounds.max.x"));
 
                                         gen.ShowAsContext();
                                     }
@@ -310,19 +317,26 @@ namespace Tatting
 
             set = GUILayout.TextArea(set,GUILayout.Height(74));
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Submit"))
-                editorWindow.Close();
-            if(GUILayout.Button("Cancel"))
+            if (GUILayout.Button("Cancel"))
             {
                 set = startSet;
+                editorWindow.Close();
+            }
+            if (GUILayout.Button("Submit"))
+                editorWindow.Close();
+            if (GUILayout.Button(EditorGUIUtility.IconContent("AlphabeticalSorting")))
+            {
+                resort = true;
                 editorWindow.Close();
             }
             GUILayout.EndHorizontal();
         }
 
+        bool resort = false;
+
         public override void OnClose()
         {
-            if (set == startSet)
+            if (!resort && set == startSet)
                 return;
 
             Dictionary<char, MeshFont.CharacterInfo> newDict = new Dictionary<char, MeshFont.CharacterInfo>();
@@ -468,6 +482,79 @@ namespace Tatting
                     }
 
                     TattingFontInspector.UpdateAllTextMeshesSharingFont(font);
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+
+    }
+
+    public class AutomaticKerningPopupWindow : PopupWindowContent
+    {
+        MeshFont font;
+
+        public AutomaticKerningPopupWindow(MeshFont font)
+        {
+            this.font = font;
+        }
+
+        public override Vector2 GetWindowSize()
+        {
+            return new Vector2(400, 120);
+        }
+
+        float widthMultiplier = 0.001f;
+
+        public override void OnGUI(Rect rect)
+        {
+            GUILayout.Space(5);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("Automatic Kerning", EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8);
+
+            GUILayout.Label(
+                "Load width values from a .ttf or .otf file.\n" +
+                "Unit width is the width of 1 font design unit in Unity units.\n" +
+                "0.001 is the default width of a design unit in Blender.");
+
+            EditorGUILayout.FloatField("Unit width", widthMultiplier);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Cancel"))
+                editorWindow.Close();
+
+            if (GUILayout.Button("Load File"))
+            {
+
+                string fontPath = AssetDatabase.GetAssetPath(font);
+                string path = EditorUtility.OpenFilePanel("Open font file", fontPath.Remove(fontPath.LastIndexOf('/')), "ttf,otf");
+                Debug.Log(path);
+
+                if (path != "")
+                {
+
+                    string set = "";
+                    foreach (var kvp in font.characterDictionary)
+                        set += kvp.Key;
+
+                    Typography.OpenFont.OpenFontReader openFontReader = new Typography.OpenFont.OpenFontReader();
+                    System.IO.Stream stream = new System.IO.FileStream(path, System.IO.FileMode.Open);
+                    Typography.OpenFont.Typeface typeface = openFontReader.Read(stream);
+                    stream.Close();
+
+                    Typography.TextLayout.GlyphLayout gl = new Typography.TextLayout.GlyphLayout();
+                    gl.Typeface = typeface;
+
+
+                    gl.Layout(set.ToCharArray(), 0, set.Length);
+
+                    foreach (var item in gl.GetUnscaledGlyphPlanIter())
+                    {
+                        font.characterDictionary[set[item.input_cp_offset]].width = item.AdvanceX / 1000f;
+                    }
                 }
             }
             GUILayout.EndHorizontal();
