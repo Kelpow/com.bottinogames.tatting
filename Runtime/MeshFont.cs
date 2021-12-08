@@ -553,7 +553,7 @@ namespace Tatting
 
                     foreach (var item in gl.GetUnscaledGlyphPlanIter())
                     {
-                        font.characterDictionary[set[item.input_cp_offset]].width = item.AdvanceX / 1000f;
+                        font.characterDictionary[set[item.input_cp_offset]].width = item.AdvanceX * widthMultiplier;
                     }
                 }
             }

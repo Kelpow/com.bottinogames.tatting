@@ -4,10 +4,10 @@ Shader "FontShader"
 {
 	Properties
 	{
+		_FrontTop("Front Top", Color) = (1,1,1,0)
+		_FrontBottom("Front Bottom", Color) = (0,0,0,0)
 		_EdgeTop("Edge Top", Color) = (1,1,1,0)
 		_EdgeBottom("Edge Bottom", Color) = (0,0,0,0)
-		_FrontBottom("Front Bottom", Color) = (0,0,0,0)
-		_FrontTop("Front Top", Color) = (1,1,1,0)
 
 	}
 	
@@ -130,15 +130,15 @@ Shader "FontShader"
 }
 /*ASEBEGIN
 Version=18912
-0;73;1920;936;2023.723;622.7424;1.981009;True;False
+0;73;1920;936;1267.974;-150.3564;1;True;False
 Node;AmplifyShaderEditor.NormalVertexDataNode;6;-411.51,-13.51068;Inherit;False;0;5;FLOAT3;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.AbsOpNode;8;-235.51,-3.510685;Inherit;False;1;0;FLOAT3;0,0,0;False;1;FLOAT3;0
 Node;AmplifyShaderEditor.TexCoordVertexDataNode;30;-722.9491,960.2074;Inherit;False;0;2;0;5;FLOAT2;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.TexCoordVertexDataNode;26;-711.7104,483.4645;Inherit;False;0;2;0;5;FLOAT2;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
-Node;AmplifyShaderEditor.ColorNode;28;-731.9491,622.2074;Inherit;False;Property;_EdgeTop;Edge Top;0;0;Create;True;0;0;0;False;0;False;1,1,1,0;1,1,1,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
-Node;AmplifyShaderEditor.ColorNode;29;-730.9491,791.2074;Inherit;False;Property;_EdgeBottom;Edge Bottom;1;0;Create;True;0;0;0;False;0;False;0,0,0,0;0,0,0,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
-Node;AmplifyShaderEditor.ColorNode;23;-719.7104,314.4645;Inherit;False;Property;_FrontBottom;Front Bottom;2;0;Create;True;0;0;0;False;0;False;0,0,0,0;0,0,0,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
-Node;AmplifyShaderEditor.ColorNode;22;-720.7104,145.4645;Inherit;False;Property;_FrontTop;Front Top;3;0;Create;True;0;0;0;False;0;False;1,1,1,0;1,1,1,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
+Node;AmplifyShaderEditor.ColorNode;28;-731.9491,622.2074;Inherit;False;Property;_EdgeTop;Edge Top;2;0;Create;True;0;0;0;False;0;False;1,1,1,0;1,1,1,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
+Node;AmplifyShaderEditor.ColorNode;29;-730.9491,791.2074;Inherit;False;Property;_EdgeBottom;Edge Bottom;3;0;Create;True;0;0;0;False;0;False;0,0,0,0;0,0,0,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
+Node;AmplifyShaderEditor.ColorNode;23;-719.7104,314.4645;Inherit;False;Property;_FrontBottom;Front Bottom;1;0;Create;True;0;0;0;False;0;False;0,0,0,0;0,0,0,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
+Node;AmplifyShaderEditor.ColorNode;22;-720.7104,145.4645;Inherit;False;Property;_FrontTop;Front Top;0;0;Create;True;0;0;0;False;0;False;1,1,1,0;1,1,1,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.RangedFloatNode;11;-207.1344,190.7457;Inherit;False;Constant;_sqrt22;sqrt 2 / 2;0;0;Create;True;0;0;0;False;0;False;0.7071068;0;0;0;0;1;FLOAT;0
 Node;AmplifyShaderEditor.BreakToComponentsNode;9;-119.51,-11.51068;Inherit;False;FLOAT3;1;0;FLOAT3;0,0,0;False;16;FLOAT;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4;FLOAT;5;FLOAT;6;FLOAT;7;FLOAT;8;FLOAT;9;FLOAT;10;FLOAT;11;FLOAT;12;FLOAT;13;FLOAT;14;FLOAT;15
 Node;AmplifyShaderEditor.LerpOp;24;-391.7104,287.4645;Inherit;False;3;0;COLOR;0,0,0,0;False;1;COLOR;0,0,0,0;False;2;FLOAT;0;False;1;COLOR;0
@@ -160,4 +160,4 @@ WireConnection;13;2;24;0
 WireConnection;13;3;27;0
 WireConnection;2;0;13;0
 ASEEND*/
-//CHKSM=3E6144CA8A37B817BFD0AF31C6EFD5064353BA96
+//CHKSM=59385106E908433B3503175A47A84D0771220AC0
