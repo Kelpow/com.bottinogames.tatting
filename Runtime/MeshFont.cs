@@ -503,7 +503,7 @@ namespace Tatting
             return new Vector2(400, 120);
         }
 
-        float widthMultiplier = 0.001f;
+        float widthMultiplier = 1f;
 
         public override void OnGUI(Rect rect)
         {
@@ -517,10 +517,10 @@ namespace Tatting
 
             GUILayout.Label(
                 "Load width values from a .ttf or .otf file.\n" +
-                "Unit width is the width of 1 font design unit in Unity units.\n" +
-                "0.001 is the default width of a design unit in Blender.");
+                "EM width is the width of 1 EM in Unity units.\n" +
+                "1 is the default multiplier of EM in Blender. Usually. ¯\\_(ツ)_/¯");
 
-            EditorGUILayout.FloatField("Unit width", widthMultiplier);
+            widthMultiplier = EditorGUILayout.FloatField("EM Width", widthMultiplier);
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Cancel"))
@@ -553,8 +553,17 @@ namespace Tatting
 
                     foreach (var item in gl.GetUnscaledGlyphPlanIter())
                     {
-                        font.characterDictionary[set[item.input_cp_offset]].width = item.AdvanceX * widthMultiplier;
+                        Debug.Log($"{set[item.input_cp_offset]} : {item.AdvanceX}, {typeface.UnitsPerEm}, {(float)item.AdvanceX / (float)typeface.UnitsPerEm}");
+                        font.characterDictionary[set[item.input_cp_offset]].width = ((float)item.AdvanceX / (float)typeface.UnitsPerEm) * widthMultiplier;
                     }
+
+                    gl.Layout(new char[] { ' ' }, 0, 1);
+                    foreach (var item in gl.GetUnscaledGlyphPlanIter())
+                    {
+                        font.whitespaceWidth = ((float)item.AdvanceX / (float)typeface.UnitsPerEm) * widthMultiplier;
+                    }
+
+                    TattingFontInspector.UpdateAllTextMeshesSharingFont(font);
                 }
             }
             GUILayout.EndHorizontal();
