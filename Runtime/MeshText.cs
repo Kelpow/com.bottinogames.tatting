@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Runtime;
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 #endif
 
 namespace Tatting
@@ -21,7 +22,7 @@ namespace Tatting
         const int CEN = 16;
         const int RIT = 32;
 
-        public enum Alignment : int
+        public enum TextAlignment : int
         {
             TopLeft = TOP + LFT,
             TopCenter = TOP + CEN,
@@ -36,7 +37,19 @@ namespace Tatting
 
 
         //public
-        public MeshFont font;
+        [SerializeField] private MeshFont font;
+        public MeshFont Font
+        {
+            get { return font; }
+            set
+            {
+                if(font != value)
+                {
+                    font = value;
+                    UpdateMesh();
+                }
+            }
+        }
 
         [SerializeField] [TextArea] private string text;
         public string Text
@@ -51,17 +64,59 @@ namespace Tatting
                 }
             }
         }
+        
+        [Header("Formating")]
+        
+        [SerializeField] private float lineSpacing = 1f;
+        public float LineSpacing
+        {
+            get { return lineSpacing; }
+            set
+            {
+                if(lineSpacing != value)
+                {
+                    lineSpacing = value;
+                    UpdateMesh();
+                }
+            }
+        }
+        
+        [SerializeField] private TextAlignment alignment = TextAlignment.TopLeft;
+        public TextAlignment Alignment
+        {
+            get { return alignment; }
+            set
+            {
+                if(alignment != value)
+                {
+                    alignment = value;
+                    UpdateMesh();
+                }
+            }
+        }
 
-        public float lineSpacing = 1f;
 
-        public Alignment alignment = Alignment.TopLeft;
+        [Tatting.Foldout("Advanced", true, true)]
+
+        [SerializeField] [Min(0)] private float maxWidth = 0f;
+        public float MaxWidth
+        {
+            get { return maxWidth; }
+            set
+            {
+                if(maxWidth != value)
+                {
+                    maxWidth = value;
+                    UpdateMesh();
+                }
+            }
+        }
+
 
 
         [System.NonSerialized] public List<MeshTextEffectDelegate> effects = new List<MeshTextEffectDelegate>();
 
-
         //internal
-
         [HideInInspector] Mesh _mesh;
         Mesh mesh
         {
@@ -147,6 +202,7 @@ namespace Tatting
 
                 head.x += info.width;
             }
+
             extents.x = Mathf.Max(head.x, extents.x);
             extents.y += lineSpacing;
 
@@ -184,12 +240,18 @@ namespace Tatting
             UpdateMesh();
         }
 
+        private void OnDestroy()
+        {
+            TryDestroyInOnDestroy(GetComponent<MeshFilter>());
+            TryDestroyInOnDestroy(GetComponent<MeshRenderer>());
+        }
 
 
         bool active;
         private void Update()
         {
-            UpdateMesh();
+            //This updatemesh was here and I'm really hoping it didn't /need/ to be there. Commenting just in case.
+            //UpdateMesh();
             if (effects != null)
             {
                 active = true;
@@ -200,21 +262,28 @@ namespace Tatting
             }
         }
 
-
-
-
-
-        //internal
-        private void FontHasChanged()
+        //Stolen wholesale from Freya Holmer, hopes she doesn't mind ♥ https://acegikmo.medium.com/the-cascading-workarounds-of-feature-gaps-b5ff1cc65ca2
+        static void TryDestroyInOnDestroy(Object obj)
         {
-            UpdateMesh();
+            if (obj == null) return;
+#if UNITY_EDITOR
+            if(Application.isEditor && Application.isPlaying == false)
+            {
+                EditorApplication.delayCall += () =>
+                {
+                    if (Application.isPlaying == false && obj != null)
+                        Object.DestroyImmediate(obj);
+                };
+            }
+            else
+            {
+                Object.Destroy(obj);
+            }
+#else
+            Object.Destroy(obj);
+#endif
         }
 
-        [ContextMenu("Force Mesh Update")]
-        public void ForceMeshUpdate()
-        {
-            UpdateMesh();
-        }
 
 
 #if UNITY_EDITOR
@@ -230,15 +299,59 @@ namespace Tatting
 
 
         //Adds "create new gameobject" functionality for 3D Mesh Text Renderers
-        [MenuItem("GameObject/3D Mesh Text", priority = 20)]
-        static void ObjectCreationMenuItem()
+        //TODO: Have object be created similarly to other assets, follow hiearchy selection and all that
+        [MenuItem("GameObject/3D Object/3D Text - Tatting", priority = 29)] 
+        static void ObjectCreationMenuItem(MenuCommand command)
         {
-            GameObject newTatting = new GameObject("3D Mesh Text", typeof(MeshFilter),typeof(MeshRenderer),typeof(MeshText));
-            newTatting.transform.position = SceneView.lastActiveSceneView.pivot;
-            newTatting.GetComponent<MeshText>().text = "Mesh Text";
+            GameObject newGameObject = ObjectFactory.CreateGameObject("Text (Tatting)", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshText));
+
+            StageUtility.PlaceGameObjectInCurrentStage(newGameObject);
+
+            GameObject context = command.context as GameObject;
+            if (context != null)
+            {
+                GameObjectUtility.SetParentAndAlign(newGameObject, context);
+            }
+            else
+            {
+                newGameObject.transform.position = SceneView.lastActiveSceneView.pivot;
+            }
+
+            //Set your default data and whatnot here
+            MeshFilter filter = newGameObject.GetComponent<MeshFilter>();
+            filter.hideFlags = HideFlags.None;
+
+            Undo.RegisterCreatedObjectUndo(newGameObject, $"Create {newGameObject.name}");
+
+            Selection.activeObject = newGameObject;
+        }
+
+
+
+        //internal debug
+        [ContextMenu("Force Mesh Update")]
+        public void ForceMeshUpdate()
+        {
+            UpdateMesh();
+        }
+
+
+        //===== Inspector ====
+        [CustomEditor(typeof(MeshText))]
+        public class Inspector : Editor
+        {
+            private void OnEnable()
+            {
+                MeshText target = (MeshText)base.target;
+                MeshFilter filter = target.GetComponent<MeshFilter>();
+                //MeshRenderer renderer = target.GetComponent<MeshRenderer>();
+
+                filter.hideFlags = HideFlags.HideInInspector;
+                //renderer.hideFlags = HideFlags.None;
+            }
         }
 
 #endif
-
     }
+     
 }

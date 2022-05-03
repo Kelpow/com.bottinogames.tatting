@@ -283,8 +283,8 @@ namespace Tatting
         public static void UpdateAllTextMeshesSharingFont(MeshFont font)
         {
             foreach (MeshText text in Resources.FindObjectsOfTypeAll<MeshText>())
-                if (!EditorUtility.IsPersistent(text.transform.root.gameObject) && text.font == font)
-                    text.SendMessage("FontHasChanged");
+                if (!EditorUtility.IsPersistent(text.transform.root.gameObject) && text.Font == font)
+                    text.SendMessage("ForceMeshUpdate");
         }
     }
 
