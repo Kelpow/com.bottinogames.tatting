@@ -14,6 +14,16 @@ namespace Tatting
     [CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
     public class MeshFont : ScriptableObject, ISerializationCallbackReceiver
     {
+        //TEST
+        [MenuItem("Assets/CURSED/CREATEMAT")]
+        public static void CreateTempMat()
+        {
+            Material mat = new Material(Shader.Find("Transparent/Diffuse"));
+            AssetDatabase.CreateAsset(mat, "com.bottinogames.tatting/Editor/temp.mat");
+        }
+        //TEST
+
+
         private static CharacterInfo zeroWidthCharacter;
         public static CharacterInfo ZeroWidthCharacter
         {
