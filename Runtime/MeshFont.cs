@@ -20,6 +20,7 @@ namespace Tatting
         {
             Material mat = new Material(Shader.Find("Transparent/Diffuse"));
             AssetDatabase.CreateAsset(mat, "Packages/com.bottinogames.tatting/Editor/temp.mat");
+            AssetDatabase.ImportAsset("Packages/com.bottinogames.tatting/Editor/temp.mat", ImportAssetOptions.ForceUpdate);
         }
         //TEST
 
