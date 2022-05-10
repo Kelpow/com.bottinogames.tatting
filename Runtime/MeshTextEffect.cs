@@ -9,26 +9,8 @@ namespace Tatting
 {
     public delegate TRS MeshTextEffectDelegate(Vector2 head, int index);
 
-    public struct TRS
-    {
-        public Vector3 translation;
-        public Quaternion rotation;
-        public Vector3 scale;
-
-        public TRS(Vector3 translation, Quaternion rotation, Vector3 scale)
-        {
-            this.translation = translation;
-            this.rotation = rotation;
-            this.scale = scale;
-        }
-
-        public static TRS identity { get { return new TRS(Vector3.zero, Quaternion.identity, Vector3.one); } }
-    }
-
     public abstract class MeshTextEffect : MonoBehaviour
     {
-
-
         [HideInInspector]
         public bool startOnAwake;
 

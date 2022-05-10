@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -13,83 +14,129 @@ namespace Tatting
     [CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
     public class MeshFont : ScriptableObject, ISerializationCallbackReceiver
     {
-        private static CharacterInfo _zeroWidthCharacter;
-        public static CharacterInfo zeroWidthCharacter
+        private static CharacterInfo zeroWidthCharacter;
+        public static CharacterInfo ZeroWidthCharacter
         {
             get
             {
-                if (_zeroWidthCharacter == null)
+                if (zeroWidthCharacter == null)
                 {
-                    _zeroWidthCharacter = new CharacterInfo('~');
-                    _zeroWidthCharacter.mesh = CharacterInfo.emptyMesh;
-                    _zeroWidthCharacter.width = 0f;
+                    zeroWidthCharacter = new CharacterInfo('~');
+                    zeroWidthCharacter.mesh = CharacterInfo.emptyMesh;
+                    zeroWidthCharacter.width = 0f;
                 }
-                return _zeroWidthCharacter;
+                return zeroWidthCharacter;
             }
         }
 
-        //spacing to use for whitespace (' ') if the dictionary does not already contain a space character
-        public float whitespaceWidth = 1f;
-
-        public bool hasFallbackCharacter = false;
-
-
-        [SerializeField] private List<CharacterInfo> _dictionarySerializationHelper = new List<CharacterInfo>();
-        public Dictionary<char, CharacterInfo> characterDictionary = new Dictionary<char, CharacterInfo>();
         private CharacterInfo _whitespaceCharacter;
-        public CharacterInfo whitespaceCharacter
+        private CharacterInfo WhitespaceCharacter
         {
             get
             {
-                if (_whitespaceCharacter == null)
+                if (_whitespaceCharacter != null)
                 {
-                    _whitespaceCharacter = new CharacterInfo(' ');
                     _whitespaceCharacter.width = whitespaceWidth;
-                    _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
-                } else if (_whitespaceCharacter.mesh == null)
-                {
-                    _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
+                    return _whitespaceCharacter;
                 }
 
-
-                if (_whitespaceCharacter.width != whitespaceWidth)
-                    _whitespaceCharacter.width = whitespaceWidth;
-
+                _whitespaceCharacter = new CharacterInfo(' ');
+                _whitespaceCharacter.mesh = CharacterInfo.emptyMesh;
+                _whitespaceCharacter.width = whitespaceWidth;
                 return _whitespaceCharacter;
             }
         }
-        [SerializeField] private CharacterInfo _fallbackCharacter;
-        public CharacterInfo fallbackCharacter
+
+        private CharacterInfo _fallbackCharacter;
+        private CharacterInfo FallbackCharacter
         {
             get
             {
-                if (hasFallbackCharacter)
-                {
-                    return _fallbackCharacter;
-                }
-                else
+                //if (_fallbackCharacter != null)
+                //    return _fallbackCharacter;
+
+                if(characterDictionary.Count <= 0)
                 {
                     return zeroWidthCharacter;
+                }    
+
+                _fallbackCharacter = new CharacterInfo('~');
+                Mesh fallbackMesh = new Mesh();
+
+                CharacterInfo info = null;
+                string basicSearchSet = "ABCMWabcmw0?";
+                foreach (char c in basicSearchSet)
+                {
+                    if (characterDictionary.TryGetValue(c, out info))
+                        break;
                 }
+                if (info == null)
+                    info = characterDictionary.Values.First();
+
+                _fallbackCharacter.width = info.width;
+
+                Bounds b = info.mesh.bounds;
+
+                Vector3[] vertices = new Vector3[] {
+                    b.min,
+                    new Vector3(b.max.x,b.min.y,b.min.z),
+                    new Vector3(b.min.x,b.min.y,b.max.z),
+                    new Vector3(b.max.x,b.min.y,b.max.z),
+                    new Vector3(b.min.x,b.max.y,b.min.z),
+                    new Vector3(b.max.x,b.max.y,b.min.z),
+                    new Vector3(b.min.x,b.max.y,b.max.z),
+                    b.max
+                };
+                int[] triangles = new int[] {
+                    0,1,3,
+                    0,3,2,
+
+                    0,4,5,
+                    0,5,1,
+
+                    0,2,6,
+                    0,6,4,
+
+                    7,6,2,
+                    7,2,3,
+
+                    7,3,1,
+                    7,1,5,
+
+                    7,5,4,
+                    7,4,6,
+                };
+
+                fallbackMesh.SetVertices(vertices);
+                fallbackMesh.SetTriangles(triangles, 0);
+                
+
+                _fallbackCharacter.mesh = fallbackMesh;
+                return _fallbackCharacter;
             }
         }
 
 
+        //spacing to use for whitespace character (' ')
+        public float whitespaceWidth = 1f;
+
+        [SerializeField] private List<CharacterInfo> _dictionarySerializationHelper = new List<CharacterInfo>();
+        public Dictionary<char, CharacterInfo> characterDictionary = new Dictionary<char, CharacterInfo>();
 
 
         public CharacterInfo GetCharacterInfo(char c)
         {
-            if (characterDictionary.ContainsKey(c))
+            if (characterDictionary.TryGetValue(c, out var info))
             {
-                return characterDictionary[c];
+                return info;
             } 
             else if (c == ' ')
             {
-                return whitespaceCharacter;
-            } 
+                return WhitespaceCharacter;
+            }
             else
             {
-                return fallbackCharacter;
+                return FallbackCharacter;
             }
         }
 
@@ -183,16 +230,6 @@ namespace Tatting
             GUILayout.BeginVertical("HelpBox");
             {
                 font.whitespaceWidth = EditorGUILayout.FloatField("Whitespace width", font.whitespaceWidth);
-                font.hasFallbackCharacter = EditorGUILayout.Toggle("Fallback Character", font.hasFallbackCharacter);
-                if (font.hasFallbackCharacter)
-                {
-                    GUILayout.BeginVertical("HelpBox");
-                    {
-                        font.fallbackCharacter.mesh = (Mesh)EditorGUILayout.ObjectField("Fallback Mesh", font.fallbackCharacter.mesh, typeof(Mesh), allowSceneObjects: false);
-                        font.fallbackCharacter.width = EditorGUILayout.FloatField("Width", font.fallbackCharacter.width);
-                    }
-                    GUILayout.EndVertical();
-                }
             }
             GUILayout.EndVertical();
 
@@ -342,7 +379,7 @@ namespace Tatting
             Dictionary<char, MeshFont.CharacterInfo> newDict = new Dictionary<char, MeshFont.CharacterInfo>();
             if (set.Length > 0)
             {
-                char[] sortedSet = set.ToCharArray();
+                char[] sortedSet = set.Replace(" ", "").ToCharArray();
                 Array.Sort(sortedSet);
                 foreach (char c in sortedSet)
                 {
