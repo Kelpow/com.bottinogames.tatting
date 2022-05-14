@@ -49,19 +49,19 @@ namespace Tatting
 
         [Header("Formating")]
         
-        [SerializeField] private float lineSpacing = 1f;
-        public float LineSpacing
-        {
-            get { return lineSpacing; }
-            set
-            {
-                if(lineSpacing != value)
-                {
-                    lineSpacing = value;
-                    UpdateMesh();
-                }
-            }
-        }
+        //[SerializeField] private float lineSpacing = 1f;
+        //public float LineSpacing
+        //{
+        //    get { return lineSpacing; }
+        //    set
+        //    {
+        //        if(lineSpacing != value)
+        //        {
+        //            lineSpacing = value;
+        //            UpdateMesh();
+        //        }
+        //    }
+        //}
         
         [SerializeField] private TextAlignment alignment = TextAlignment.TopLeft;
         public TextAlignment Alignment
@@ -300,7 +300,7 @@ namespace Tatting
                 float lineheight = 0f;
                 foreach (Line line in lines)
                 {
-                    lineheight -= lineSpacing * line.scale;
+                    lineheight -= font.lineSpacing * line.scale;
                     float lineStart;
                     if (centerAligned)
                         lineStart = -line.width / 2f;

@@ -118,6 +118,11 @@ namespace Tatting
         //spacing to use for whitespace character (' ')
         public float whitespaceWidth = 1f;
 
+        //default spacing between lines
+        public float lineSpacing = 1f;
+
+        public float unitsPerEM = .001f;
+
         [SerializeField] private List<CharacterInfo> _dictionarySerializationHelper = new List<CharacterInfo>();
         public Dictionary<char, CharacterInfo> characterDictionary = new Dictionary<char, CharacterInfo>();
 
@@ -157,9 +162,6 @@ namespace Tatting
 
 
 
-
-
-
         [System.Serializable]
         public class CharacterInfo
         {
@@ -177,6 +179,57 @@ namespace Tatting
                 width = 0f;
             }
         }
+
+
+#if UNITY_EDITOR
+        
+        void LoadFromMeshes(IEnumerable<Mesh> meshes, bool addToCharSet, bool overwriteExistingMeshes, bool clearUnfoundCharacters)
+        {
+            HashSet<char> foundChars = new HashSet<char>();
+
+            foreach (Mesh mesh in meshes)
+            {
+                if (mesh.name.Length != 1)
+                    continue;
+                
+                char c = mesh.name[0];
+                
+                
+                if(characterDictionary.TryGetValue(c, out var info))
+                {
+                    if (overwriteExistingMeshes)
+                        info.mesh = mesh;
+                }
+                else
+                {
+                    if (addToCharSet) 
+                    {
+                        var newInfo = new CharacterInfo(c);
+                        newInfo.mesh = mesh;
+                        characterDictionary.Add(c, newInfo);
+                    }
+                }
+
+                if (clearUnfoundCharacters)
+                    foundChars.Add(c);
+            }
+            if (clearUnfoundCharacters)
+            {
+                List<char> unfoundChars = new List<char>();
+                foreach (var kvp in characterDictionary)
+                {
+                    if (!foundChars.Contains(kvp.Key))
+                        unfoundChars.Add(kvp.Key);
+                }
+                foreach (var c in unfoundChars)
+                {
+                    characterDictionary.Remove(c);
+                }
+            }
+        }
+
+
+#endif
     }
 
 
@@ -217,7 +270,7 @@ namespace Tatting
                 {
                     PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AutomaticSetupPopupWindow(font));
                 }
-                if (GUILayout.Button("Automatic Kerning"))
+                if (GUILayout.Button("Load Kerning from Font"))
                 {
                     PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AutomaticKerningPopupWindow(font));
                 }
@@ -563,7 +616,6 @@ namespace Tatting
 
             if (GUILayout.Button("Load File"))
             {
-
                 string fontPath = AssetDatabase.GetAssetPath(font);
                 string path = EditorUtility.OpenFilePanel("Open font file", fontPath.Remove(fontPath.LastIndexOf('/')), "ttf,otf");
                 Debug.Log(path);
@@ -603,7 +655,6 @@ namespace Tatting
             }
             GUILayout.EndHorizontal();
         }
-
     }
 #endif
 
