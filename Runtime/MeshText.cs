@@ -140,8 +140,6 @@ namespace Tatting
 
         private void Awake()
         {
-
-            Debug.Log("awake");
             filter = GetComponent<MeshFilter>();
             filter.sharedMesh = mesh;
 
@@ -192,34 +190,89 @@ namespace Tatting
                             
                         lines.Add(newline);
                         break;
+
                     case WidthLimiting.WordWrap:
+                        newline = new Line("", 0f, 1f);
+                        int lineStart = 0;
+                        float spacewidth = 0f;
+                        for (int i = 0; i < baseline.Length; i++)
+                        {
+                            char c = baseline[i];
+                            if (c == ' ') //someday should be converted to char.IsWhitespace(c)
+                            {
+                                var info = font.GetCharacterInfo(c);
+                                spacewidth += info.width;
+                            } 
+                            else
+                            {
+                                var word = GetNextWord(baseline, i);
+                                if(newline.width + spacewidth + word.Item2 > maxWidth)
+                                {
+                                    newline.content = baseline.Substring(lineStart, i - lineStart);
+                                    lines.Add(newline);
+                                    
+                                    newline.width = word.Item2;
+                                    lineStart = i;
+                                    spacewidth = 0f;
+                                    i += word.Item1 - 1;
+                                }
+                                else
+                                {
+                                    newline.width += spacewidth;
+                                    spacewidth = 0f;
+                                    newline.width += word.Item2;
+                                    i += word.Item1 - 1;
+                                }
+                            }
+                        }
+                        newline.content = baseline.Substring(lineStart);
+                        lines.Add(newline);
                         break;
+
                     case WidthLimiting.CharacterWrap:
                         newline = new Line("", 0f, 1f);
-                        var sb = new System.Text.StringBuilder(baseline.Length);
+                        var sbcw = new System.Text.StringBuilder(baseline.Length);
                         foreach (char c in baseline)
                         {
                             var info = font.GetCharacterInfo(c);
                             if (newline.width + info.width > maxWidth)
                             {
-                                newline.content = sb.ToString();
+                                newline.content = sbcw.ToString();
                                 lines.Add(newline);
 
-                                sb.Clear();
+                                sbcw.Clear();
                                 newline.width = 0f;
                             }
-                            sb.Append(c);
+                            sbcw.Append(c);
                             newline.width += info.width;
                         }
-                        newline.content = sb.ToString();
+                        newline.content = sbcw.ToString();
                         lines.Add(newline);
                         break;
+
                     default:
                         break;
                 }
             }
-
         }
+
+        (int, float) GetNextWord(string baseline, int startIndex)
+        {
+            float width = 0;
+            int length = 0;
+            for (int i = startIndex; i < baseline.Length; i++)
+            {
+                char c = baseline[i];
+                if (c == ' ') //someday should be converted to char.IsWhitespace(c)
+                    break;
+                length++;
+                var info = font.GetCharacterInfo(c);
+                width += info.width;
+            }
+            return (length, width);
+        }
+
+
 
         private void UpdateMesh()
         {
@@ -234,7 +287,6 @@ namespace Tatting
                     length *= 2;
                 combineArray = new CombineInstance[length];
                 trsArray = new TRS[length];
-                 
             }
 
             bool centerAligned = ((int)alignment & CEN) != 0;

@@ -14,16 +14,6 @@ namespace Tatting
     [CreateAssetMenu(fileName = "New Tatting Mesh Font", menuName = "Tatting Mesh Font", order = 540)]
     public class MeshFont : ScriptableObject, ISerializationCallbackReceiver
     {
-        //TEST
-        [MenuItem("Assets/CURSED/CREATEMAT")]
-        public static void CreateTempMat()
-        {
-            Material mat = new Material(Shader.Find("Transparent/Diffuse"));
-            AssetDatabase.CreateAsset(mat, "Packages/com.bottinogames.tatting/Editor/temp.mat");
-            AssetDatabase.ImportAsset("Packages/com.bottinogames.tatting/Editor/temp.mat", ImportAssetOptions.ForceUpdate);
-        }
-        //TEST
-
 
         private static CharacterInfo zeroWidthCharacter;
         public static CharacterInfo ZeroWidthCharacter
@@ -63,9 +53,6 @@ namespace Tatting
         {
             get
             {
-                //if (_fallbackCharacter != null)
-                //    return _fallbackCharacter;
-
                 if(characterDictionary.Count <= 0)
                 {
                     return zeroWidthCharacter;
@@ -284,7 +271,7 @@ namespace Tatting
 
                                 if (font.characterDictionary[c].mesh)
                                 {
-                                    GUILayout.Box(AssetPreview.GetAssetPreview(font.characterDictionary[c].mesh), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true), GUILayout.MinWidth(70), GUILayout.MinHeight(70));
+                                    //GUILayout.Box(AssetPreview.GetAssetPreview(font.characterDictionary[c].mesh), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true), GUILayout.MinWidth(70), GUILayout.MinHeight(70));
                                 }
                             }
                             GUILayout.EndVertical();
