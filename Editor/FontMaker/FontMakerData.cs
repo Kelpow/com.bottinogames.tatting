@@ -3,11 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-#if UNITY_2022_1_OR_NEWER
-using Microsoft.Win32.Registry;
-#else
 using Microsoft.Win32;
-#endif
+
 namespace Tatting
 {
     [FilePath("com.bottinogames.tatting/prefs.cfg", FilePathAttribute.Location.PreferencesFolder)]
