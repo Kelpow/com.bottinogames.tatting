@@ -1,7 +1,9 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime;
+using Object = UnityEngine.Object;
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -39,7 +41,7 @@ namespace Tatting
                 if (text != value)
                 {
                     text = value;
-                    //UpdateText();
+                    UpdateText();
                     UpdateMesh();
                 }
             }
@@ -48,20 +50,6 @@ namespace Tatting
         
 
         [Header("Formating")]
-        
-        //[SerializeField] private float lineSpacing = 1f;
-        //public float LineSpacing
-        //{
-        //    get { return lineSpacing; }
-        //    set
-        //    {
-        //        if(lineSpacing != value)
-        //        {
-        //            lineSpacing = value;
-        //            UpdateMesh();
-        //        }
-        //    }
-        //}
         
         [SerializeField] private TextAlignment alignment = TextAlignment.TopLeft;
         public TextAlignment Alignment
@@ -198,7 +186,7 @@ namespace Tatting
                         for (int i = 0; i < baseline.Length; i++)
                         {
                             char c = baseline[i];
-                            if (c == ' ') //someday should be converted to char.IsWhitespace(c)
+                            if (c == ' ') //someday should be converted to char.IsWhitespace(c)   ---   honestly don't know why I shouldn't now, but don't wanna fuck it up lmao
                             {
                                 var info = font.GetCharacterInfo(c);
                                 spacewidth += info.width;
@@ -206,22 +194,22 @@ namespace Tatting
                             else
                             {
                                 var word = GetNextWord(baseline, i);
-                                if(newline.width + spacewidth + word.Item2 > maxWidth)
+                                if(newline.width + spacewidth + word.width > maxWidth)
                                 {
                                     newline.content = baseline.Substring(lineStart, i - lineStart);
                                     lines.Add(newline);
                                     
-                                    newline.width = word.Item2;
+                                    newline.width = word.width;
                                     lineStart = i;
                                     spacewidth = 0f;
-                                    i += word.Item1 - 1;
+                                    i += word.length - 1;
                                 }
                                 else
                                 {
                                     newline.width += spacewidth;
                                     spacewidth = 0f;
-                                    newline.width += word.Item2;
-                                    i += word.Item1 - 1;
+                                    newline.width += word.width;
+                                    i += word.length - 1;
                                 }
                             }
                         }
@@ -256,7 +244,7 @@ namespace Tatting
             }
         }
 
-        (int, float) GetNextWord(string baseline, int startIndex)
+        (int length, float width) GetNextWord(string baseline, int startIndex)
         {
             float width = 0;
             int length = 0;
@@ -348,20 +336,15 @@ namespace Tatting
                 combineArray[i].mesh = MeshFont.CharacterInfo.emptyMesh; 
                 combineArray[i].transform = Matrix4x4.identity;
             }
-            mesh.CombineMeshes(combineArray);
 
-            //if (((int)alignment & CEN) != 0)
-            //    x = -extents.x / 2;
-            //if (((int)alignment & RIT) != 0)
-            //    x = -extents.x;
-            //
-            //float y = 0f;
-            //if (((int)alignment & TOP) != 0)
-            //    y = -lineSpacing;
-            //if (((int)alignment & MID) != 0)
-            //    y = -extents.y / 2;
-            //if (((int)alignment & BOT) != 0)
-            //    y = -extents.y;
+            try
+            {
+                mesh.CombineMeshes(combineArray);
+            } catch 
+            {
+                Debug.LogWarning("The number of vertices in the combined mesh exceded Unity's max vertext count. (65535 vertices)", this);
+            }
+
         }
 
         private void OnValidate()
