@@ -416,7 +416,7 @@ namespace Tatting
         [MenuItem("GameObject/3D Object/3D Text - Tatting", priority = 29)] 
         static void ObjectCreationMenuItem(MenuCommand command)
         {
-            GameObject newGameObject = ObjectFactory.CreateGameObject("Text (Tatting)", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshText));
+            GameObject newGameObject = ObjectFactory.CreateGameObject("3D Mesh Text", typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshText));
 
             StageUtility.PlaceGameObjectInCurrentStage(newGameObject);
 
@@ -433,6 +433,17 @@ namespace Tatting
             //Set your default data and whatnot here
             MeshFilter filter = newGameObject.GetComponent<MeshFilter>();
             filter.hideFlags = HideFlags.None;
+
+            Material defaultMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat");
+            newGameObject.GetComponent<MeshRenderer>().sharedMaterial = defaultMat;
+
+            MeshFont[] allfonts = Resources.FindObjectsOfTypeAll(typeof(MeshFont)) as MeshFont[];
+            if (allfonts != null && allfonts.Length > 0) 
+            {
+                MeshText text = newGameObject.GetComponent<MeshText>();
+                text.font = allfonts[0];
+                text.Text = "Text";
+            }
 
             Undo.RegisterCreatedObjectUndo(newGameObject, $"Create {newGameObject.name}");
 
