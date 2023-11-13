@@ -183,14 +183,14 @@ namespace Tatting
 
 #if UNITY_EDITOR_WIN
 
-        internal void PopulateFromFontMaker(FontMaker.MakerToFontData data)
+        public void PopulateFromFontMaker(float advanceToBlend, float widthOfSpace, string modelPath, Dictionary<char, float> xAdvances)
         {
-            unitScale = data.advanceToBlend;
-            whitespaceWidth = data.widthOfSpace;
+            unitScale = advanceToBlend;
+            whitespaceWidth = widthOfSpace;
 
             characterDictionary = new Dictionary<char, CharacterInfo>();
 
-            var objs = AssetDatabase.LoadAllAssetsAtPath(data.modelPath);
+            var objs = AssetDatabase.LoadAllAssetsAtPath(modelPath);
             
             foreach (var o in objs)
             {
@@ -199,15 +199,15 @@ namespace Tatting
                     char c = mesh.name[0];
                     if (characterDictionary.ContainsKey(c))
                         continue;
-                    if (!data.xAdvances.ContainsKey(c))
+                    if (!xAdvances.ContainsKey(c))
                     {
                         Debug.Log("Couldn't find advance for: " + c);
                         continue;
                     }
-                    float advance = data.xAdvances[c];
+                    float advance = xAdvances[c];
                     CharacterInfo info = new CharacterInfo(c);
                     info.mesh = mesh;
-                    info.width = advance * data.advanceToBlend;
+                    info.width = advance * advanceToBlend;
 
                     characterDictionary.Add(c, info);
                 }

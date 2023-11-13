@@ -272,7 +272,7 @@ namespace Tatting
             modelImporter.SaveAndReimport();
 
             MeshFont newFont = ScriptableObject.CreateInstance<MeshFont>();
-            newFont.PopulateFromFontMaker(data);
+            newFont.PopulateFromFontMaker(data.advanceToBlend, data.widthOfSpace, data.modelPath, data.xAdvances);
             AssetDatabase.CreateAsset(newFont, "Assets/" + assetPath);
             AssetDatabase.SaveAssets();
 

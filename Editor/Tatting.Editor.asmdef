@@ -1,0 +1,18 @@
+{
+    "name": "Tatting.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:c3cda8d4deca3164d9e943c3475c8e2d"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
