@@ -168,8 +168,8 @@ for mesh in bpy.data.meshes:
         for idx in poly.loop_indices:
             loopVertPos = mesh.vertices[mesh.loops[idx].vertex_index].co
             r = (loopVertPos[0] - localxmin) / (localxmax - localxmin)
-            g = (loopVertPos[1] - mins[1]) / diffs[1]
-            b = (loopVertPos[2] - mins[2]) / diffs[2]
+            g = (loopVertPos[1] - mins[1]) / diffs[1] if diffs[1] else 0
+            b = (loopVertPos[2] - mins[2]) / diffs[2] if diffs[2] else 0
             colorlayer.data[idx].color = [1.0 - r,g,b,1.0]
 
 

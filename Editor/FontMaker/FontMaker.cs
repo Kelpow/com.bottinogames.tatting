@@ -564,7 +564,12 @@ namespace Tatting
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
+            process.StartInfo.RedirectStandardOutput = true;
+
             process.Start();
+
+            Debug.Log(process.StandardOutput.ReadToEnd());
+
             process.WaitForExit();
         }
 
