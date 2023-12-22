@@ -14,7 +14,7 @@ namespace Tatting
     /// <summary>
     /// A renderer for displaying Tatting 3D mesh text's.
     /// </summary>
-    [ExecuteAlways, DisallowMultipleComponent, RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+    [ExecuteAlways, DisallowMultipleComponent]
     public class MeshText : MonoBehaviour
     {
         //public
@@ -99,16 +99,20 @@ namespace Tatting
             }
         }
 
-        [SerializeField] 
-
-
         [System.NonSerialized] public List<MeshTextEffectDelegate> effects = new List<MeshTextEffectDelegate>();
 
+        //private aka inspector-only
+        [Header("Rendering")]
+        [SerializeField]
+        private RenderType renderType;
 
+        [SerializeField, HideInInspector]
+        private Material material;
 
         //internal
         
         private List<Line> lines;
+        private int combineArrayCount = 0;
         private CombineInstance[] combineArray = new CombineInstance[16];
         private TRS[] trsArray = new TRS[16];
         
@@ -128,8 +132,11 @@ namespace Tatting
 
         private void Awake()
         {
-            filter = GetComponent<MeshFilter>();
-            filter.sharedMesh = mesh;
+            if (renderType == RenderType.MeshRenderer)
+            {
+                filter = GetComponent<MeshFilter>();
+                filter.sharedMesh = mesh;
+            }
 
             if(combineArray == null)
                 combineArray = new CombineInstance[16];
@@ -337,20 +344,27 @@ namespace Tatting
                 combineArray[i].transform = Matrix4x4.identity;
             }
 
-            try
-            {
-                mesh.CombineMeshes(combineArray);
-            } catch 
-            {
-                Debug.LogWarning("The number of vertices in the combined mesh exceded Unity's max vertext count. (65535 vertices)", this);
-            }
+            combineArrayCount = cai;
 
+            if (renderType == RenderType.MeshRenderer)
+            {
+                try
+                {
+                    mesh.CombineMeshes(combineArray);
+                }
+                catch
+                {
+                    Debug.LogWarning("The number of vertices in the combined mesh exceded Unity's max vertext count. (65535 vertices) ((probably idk man this is a try catch))", this);
+                }
+            }
         }
 
         private void OnValidate()
         {
             UpdateText();
             UpdateMesh();
+            if (renderType != RenderType.DirectDraw)
+                material = null;
         }
 
         private void OnDestroy()
@@ -363,15 +377,14 @@ namespace Tatting
         bool active;
         private void Update()
         {
-            //This updatemesh was here and I'm really hoping it didn't /need/ to be there. Commenting just in case.
-            //UpdateMesh();
-            if (effects != null)
+            if(renderType == RenderType.DirectDraw && material != null)
             {
-                active = true;
-            } else if (active)
-            {
-                UpdateMesh();
-                active = false;
+                Matrix4x4 ltw = transform.localToWorldMatrix;
+                int layer = gameObject.layer;
+                for (int i = 0; i < combineArrayCount; i++)
+                {
+                    Graphics.DrawMesh(combineArray[i].mesh, ltw * combineArray[i].transform, material, layer);
+                }
             }
         }
 
@@ -432,7 +445,6 @@ namespace Tatting
 
             //Set your default data and whatnot here
             MeshFilter filter = newGameObject.GetComponent<MeshFilter>();
-            filter.hideFlags = HideFlags.None;
 
             Material defaultMat = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Diffuse.mat");
             newGameObject.GetComponent<MeshRenderer>().sharedMaterial = defaultMat;
@@ -464,14 +476,37 @@ namespace Tatting
         [CustomEditor(typeof(MeshText))]
         public class Inspector : Editor
         {
+            new MeshText target;
+
             private void OnEnable()
             {
-                MeshText target = (MeshText)base.target;
-                MeshFilter filter = target.GetComponent<MeshFilter>();
-                //MeshRenderer renderer = target.GetComponent<MeshRenderer>();
+                target = (MeshText)base.target;
+            }
 
-                filter.hideFlags = HideFlags.None;
-                //renderer.hideFlags = HideFlags.None;
+            public override void OnInspectorGUI()
+            {
+                base.OnInspectorGUI();
+                if(target.renderType == RenderType.MeshRenderer)
+                {
+                    if(target.GetComponent<MeshFilter>() == null)
+                        EditorGUILayout.HelpBox("No MeshFilter on the object!", MessageType.Error);
+                    if(target.GetComponent<MeshRenderer>() == null)
+                        EditorGUILayout.HelpBox("No MeshRenderer on the object!", MessageType.Error);
+                }
+
+                if(target.renderType == RenderType.DirectDraw)
+                {
+                    EditorGUI.BeginChangeCheck();
+
+                    Material mat = (Material)EditorGUILayout.ObjectField(target.material, typeof(Material), false);
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        Undo.RecordObject(target, "MeshText Inspector");
+                        target.material = mat;
+                    }
+                }
+
             }
         }
 
@@ -504,6 +539,12 @@ namespace Tatting
             Scaling,
             WordWrap,
             CharacterWrap
+        }
+
+        public enum RenderType
+        {
+            MeshRenderer,
+            DirectDraw
         }
     }
 
