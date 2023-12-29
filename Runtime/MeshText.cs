@@ -14,7 +14,7 @@ namespace Tatting
     /// <summary>
     /// A renderer for displaying Tatting 3D mesh text's.
     /// </summary>
-    [ExecuteAlways, DisallowMultipleComponent]
+    [ExecuteAlways, DisallowMultipleComponent, DefaultExecutionOrder(-100)]
     public class MeshText : MonoBehaviour
     {
         //public
@@ -374,8 +374,7 @@ namespace Tatting
         }
 
 
-        bool active;
-        private void Update()
+        private void LateUpdate()
         {
             if(renderType == RenderType.DirectDraw && material != null)
             {
@@ -388,7 +387,7 @@ namespace Tatting
             }
         }
 
-        //Stolen wholesale from Freya Holmer, hopes she doesn't mind ♥ https://acegikmo.medium.com/the-cascading-workarounds-of-feature-gaps-b5ff1cc65ca2
+        // Stolen wholesale from Freya Holmer, hope she doesn't mind ♥ https://acegikmo.medium.com/the-cascading-workarounds-of-feature-gaps-b5ff1cc65ca2
         static void TryDestroyInOnDestroy(Object obj)
         {
             if (obj == null) return;
@@ -424,8 +423,8 @@ namespace Tatting
         }
 
 
-        //Adds "create new gameobject" functionality for 3D Mesh Text Renderers
-        //TODO: Have object be created similarly to other assets, follow hiearchy selection and all that
+        // Adds "create new gameobject" functionality for 3D Mesh Text Renderers
+        // TODO: Have object be created similarly to other assets, follow hiearchy selection and all that
         [MenuItem("GameObject/3D Object/3D Text - Tatting", priority = 29)] 
         static void ObjectCreationMenuItem(MenuCommand command)
         {
