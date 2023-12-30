@@ -83,15 +83,13 @@ Shader "FontShader"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 				UNITY_TRANSFER_INSTANCE_ID(v, o);
 
-				float3 temp_cast_0 = (4.0).xxx;
-				
 				o.ase_normal = v.ase_normal;
 				o.ase_color = v.color;
 				float3 vertexValue = float3(0, 0, 0);
 				#if ASE_ABSOLUTE_VERTEX_POS
 				vertexValue = v.vertex.xyz;
 				#endif
-				vertexValue = temp_cast_0;
+				vertexValue = vertexValue;
 				#if ASE_ABSOLUTE_VERTEX_POS
 				v.vertex.xyz = vertexValue;
 				#else
@@ -139,8 +137,6 @@ Node;AmplifyShaderEditor.LerpOp;24;-391.7104,287.4645;Inherit;False;3;0;COLOR;0,
 Node;AmplifyShaderEditor.LerpOp;27;-393.2948,790.4124;Inherit;False;3;0;COLOR;0,0,0,0;False;1;COLOR;0,0,0,0;False;2;FLOAT;0;False;1;COLOR;0
 Node;AmplifyShaderEditor.NormalVertexDataNode;6;-411.51,-13.51068;Inherit;False;0;5;FLOAT3;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.RangedFloatNode;11;-206.1344,190.7457;Inherit;False;Constant;_sqrt22;sqrt 2 / 2;0;0;Create;True;0;0;0;False;0;False;-0.7071068;0;0;0;0;1;FLOAT;0
-Node;AmplifyShaderEditor.AbsOpNode;8;-235.51,-3.510685;Inherit;False;1;0;FLOAT3;0,0,0;False;1;FLOAT3;0
-Node;AmplifyShaderEditor.BreakToComponentsNode;9;-119.51,-11.51068;Inherit;False;FLOAT3;1;0;FLOAT3;0,0,0;False;16;FLOAT;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4;FLOAT;5;FLOAT;6;FLOAT;7;FLOAT;8;FLOAT;9;FLOAT;10;FLOAT;11;FLOAT;12;FLOAT;13;FLOAT;14;FLOAT;15
 Node;AmplifyShaderEditor.ColorNode;7;-592,-355;Inherit;False;Constant;_Color1;Color 1;0;0;Create;True;0;0;0;False;0;False;0,0,0,0;0,0,0,0;True;0;5;COLOR;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.TexCoordVertexDataNode;30;-734.5839,1187.934;Inherit;False;0;2;0;5;FLOAT2;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4
 Node;AmplifyShaderEditor.Compare;13;77.08193,163.0786;Inherit;False;4;4;0;FLOAT;0;False;1;FLOAT;0;False;2;COLOR;0,0,0,0;False;3;COLOR;0,0,0,0;False;1;COLOR;0
@@ -152,13 +148,10 @@ WireConnection;24;2;32;2
 WireConnection;27;0;28;0
 WireConnection;27;1;29;0
 WireConnection;27;2;31;2
-WireConnection;8;0;6;0
-WireConnection;9;0;8;0
 WireConnection;13;0;6;3
 WireConnection;13;1;11;0
 WireConnection;13;2;24;0
 WireConnection;13;3;27;0
 WireConnection;2;0;13;0
-WireConnection;2;1;33;0
 ASEEND*/
-//CHKSM=0CED27F1C30A7E3F780358C3F1D42BFA32B52A93
+//CHKSM=6E1C75F566D5B4F3ADA987AE587F5425106BCC01

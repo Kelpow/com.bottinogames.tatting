@@ -106,8 +106,8 @@ namespace Tatting
         [SerializeField]
         private RenderType renderType;
 
-        [SerializeField, HideInInspector]
-        private Material material;
+        [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("material")]
+        public Material directDrawMaterial;
 
         //internal
         
@@ -115,7 +115,9 @@ namespace Tatting
         private int combineArrayCount = 0;
         private CombineInstance[] combineArray = new CombineInstance[16];
         private TRS[] trsArray = new TRS[16];
-        
+
+        private Bounds directDrawLocalBounds = new Bounds();
+
         private Mesh _mesh;
         Mesh mesh
         {
@@ -291,7 +293,10 @@ namespace Tatting
             bool bottomAligned = ((int)alignment & BOT) != 0;
 
             int cai = 0; //Combine Array Index
-            if (lines.Count > 0) {
+            if (lines.Count > 0)
+            {
+                float xMin = 0f, xMax = 0f, yMin = 0f, yMax = 0f;
+
                 float lineheight = 0f;
                 foreach (Line line in lines)
                 {
@@ -322,32 +327,51 @@ namespace Tatting
                 else if (bottomAligned)
                     verticalAlignmentShift = new Vector3(0f, -lineheight);
 
-
                 for (int i = 0; i < cai; i++)
                 {
                     trsArray[i].translation += verticalAlignmentShift;
 
                     //TODO: Apply Effects
+
+                    if (renderType == RenderType.DirectDraw)
+                    {
+                        xMin = Mathf.Min(trsArray[i].translation.x, xMin);
+                        xMax = Mathf.Max(trsArray[i].translation.x, xMax);
+                        yMin = Mathf.Min(trsArray[i].translation.y, yMin);
+                        yMax = Mathf.Max(trsArray[i].translation.y, yMax);
+                    }
+                }
+
+
+                // TODO: make this shit not a straight up guess lol, these additions should be 
+                if (renderType == RenderType.DirectDraw)
+                {
+                    const float CHAR_HALF_DEPTH = 0.05f;
+                    const float CHAR_WIDTH = .6f;
+                    const float CHAR_HEIGHT = 1f;
+                    const float MARGIN = 0.2f;
+                    directDrawLocalBounds.SetMinMax(
+                        new Vector3(xMin - MARGIN, yMin - MARGIN, -CHAR_HALF_DEPTH - MARGIN),
+                        new Vector3(xMax + CHAR_WIDTH + MARGIN, yMax + CHAR_HEIGHT + MARGIN, CHAR_HALF_DEPTH + MARGIN));
                 }
             }
-
-
 
             for (int i = 0; i < cai; i++)
             {
                 combineArray[i].transform = trsArray[i].ToMatrix4x4();
-            }
-            for (int i = cai; i < combineArray.Length; i++)
-            {
-                //CombineMesh doesn't like null values or empty matices, so we have to flush the end of the array with empty meshes and identity matices.
-                combineArray[i].mesh = MeshFont.CharacterInfo.emptyMesh; 
-                combineArray[i].transform = Matrix4x4.identity;
             }
 
             combineArrayCount = cai;
 
             if (renderType == RenderType.MeshRenderer)
             {
+                for (int i = cai; i < combineArray.Length; i++)
+                {
+                    //CombineMesh doesn't like null values or empty matices, so we have to flush the end of the array with empty meshes and identity matices.
+                    combineArray[i].mesh = MeshFont.CharacterInfo.emptyMesh;
+                    combineArray[i].transform = Matrix4x4.identity;
+                }
+
                 try
                 {
                     mesh.CombineMeshes(combineArray);
@@ -356,6 +380,12 @@ namespace Tatting
                 {
                     Debug.LogWarning("The number of vertices in the combined mesh exceded Unity's max vertext count. (65535 vertices) ((probably idk man this is a try catch))", this);
                 }
+
+                
+            } 
+            else if (renderType == RenderType.DirectDraw)
+            {
+
             }
         }
 
@@ -364,7 +394,7 @@ namespace Tatting
             UpdateText();
             UpdateMesh();
             if (renderType != RenderType.DirectDraw)
-                material = null;
+                directDrawMaterial = null;
         }
 
         private void OnDestroy()
@@ -376,16 +406,60 @@ namespace Tatting
 
         private void LateUpdate()
         {
-            if(renderType == RenderType.DirectDraw && material != null)
+            if(renderType == RenderType.DirectDraw && directDrawMaterial != null)
             {
                 Matrix4x4 ltw = transform.localToWorldMatrix;
-                int layer = gameObject.layer;
+
+                RenderParams renderParams = new RenderParams(directDrawMaterial);
+                renderParams.worldBounds = TransformBounds(in directDrawLocalBounds, in ltw);
+                renderParams.layer = gameObject.layer;
+
                 for (int i = 0; i < combineArrayCount; i++)
                 {
-                    Graphics.DrawMesh(combineArray[i].mesh, ltw * combineArray[i].transform, material, layer);
+                    Graphics.RenderMesh(in renderParams, combineArray[i].mesh, 0, ltw * combineArray[i].transform);
                 }
             }
         }
+
+        // Stolen from here: https://discussions.unity.com/t/can-39-t-convert-bounds-from-world-coordinates-to-local-coordinates/57667/7
+        private Bounds TransformBounds(in Bounds bounds, in Matrix4x4 matrix)
+        {
+            Vector4 xa = matrix.GetColumn(0) * bounds.min.x;
+            Vector4 xb = matrix.GetColumn(0) * bounds.max.x;
+            
+            Vector4 ya = matrix.GetColumn(1) * bounds.min.y;
+            Vector4 yb = matrix.GetColumn(1) * bounds.max.y;
+            
+            Vector4 za = matrix.GetColumn(2) * bounds.min.z;
+            Vector4 zb = matrix.GetColumn(2) * bounds.max.z;
+            
+            Vector4 col4Pos = matrix.GetColumn(3);
+
+            Vector3 min = new Vector3();
+            min.x = Mathf.Min(xa.x, xb.x) + Mathf.Min(ya.x, yb.x) + Mathf.Min(za.x, zb.x) + col4Pos.x;
+            min.y = Mathf.Min(xa.y, xb.y) + Mathf.Min(ya.y, yb.y) + Mathf.Min(za.y, zb.y) + col4Pos.y;
+            min.z = Mathf.Min(xa.z, xb.z) + Mathf.Min(ya.z, yb.z) + Mathf.Min(za.z, zb.z) + col4Pos.z;
+
+            Vector3 max = new Vector3();
+            max.x = Mathf.Max(xa.x, xb.x) + Mathf.Max(ya.x, yb.x) + Mathf.Max(za.x, zb.x) + col4Pos.x;
+            max.y = Mathf.Max(xa.y, xb.y) + Mathf.Max(ya.y, yb.y) + Mathf.Max(za.y, zb.y) + col4Pos.y;
+            max.z = Mathf.Max(xa.z, xb.z) + Mathf.Max(ya.z, yb.z) + Mathf.Max(za.z, zb.z) + col4Pos.z;
+
+            Bounds outbounds = new Bounds();
+            outbounds.SetMinMax(min, max);
+
+            return outbounds;
+        }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmos()
+        {
+            Matrix4x4 ltw = transform.localToWorldMatrix;
+            Bounds test = TransformBounds(in directDrawLocalBounds, in ltw);
+            Gizmos.color = Color.grey;
+            Gizmos.DrawWireCube(test.center, test.size);
+        }
+#endif
 
         // Stolen wholesale from Freya Holmer, hope she doesn't mind ♥ https://acegikmo.medium.com/the-cascading-workarounds-of-feature-gaps-b5ff1cc65ca2
         static void TryDestroyInOnDestroy(Object obj)
@@ -497,12 +571,12 @@ namespace Tatting
                 {
                     EditorGUI.BeginChangeCheck();
 
-                    Material mat = (Material)EditorGUILayout.ObjectField(target.material, typeof(Material), false);
+                    Material mat = (Material)EditorGUILayout.ObjectField(target.directDrawMaterial, typeof(Material), false);
 
                     if (EditorGUI.EndChangeCheck())
                     {
                         Undo.RecordObject(target, "MeshText Inspector");
-                        target.material = mat;
+                        target.directDrawMaterial = mat;
                     }
                 }
 

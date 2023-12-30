@@ -1,7 +1,7 @@
 {
 	"name" : "com.bottinogames.tatting",
-	"version" : "0.0.2",
+	"version" : "0.0.3",
 	"displayName" : "Tatting Package",
 	"description" : " ",
-	"unity" : "2019.4"
+	"unity" : "2022.2"
 }
