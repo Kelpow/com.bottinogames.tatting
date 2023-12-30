@@ -7,22 +7,21 @@ using UnityEditor;
 
 namespace Tatting
 {
-    public delegate TRS MeshTextEffectDelegate(Vector2 head, int index);
+    public delegate void DirectDrawEffectDelegate(ref MaterialPropertyBlock materialPropertyBlock, int i, char c);
 
-    public abstract class MeshTextEffect : MonoBehaviour
+    public abstract class DirectDrawEffect : MonoBehaviour
     {
         [HideInInspector]
         public bool startOnAwake;
 
-        private MeshTextEffectDelegate del;
+        private DirectDrawEffectDelegate del;
 
-        private void Awake()
+        protected virtual void Awake()
         {
-            del = new MeshTextEffectDelegate(TextEffect);
+            del = new DirectDrawEffectDelegate(TextEffect);
 
             if (startOnAwake)
                 Activate();
-
         }
 
         public void Activate()
@@ -30,8 +29,8 @@ namespace Tatting
             MeshText text = GetComponent<MeshText>();
             if (text)
             {
-                if (!text.effects.Contains(del))
-                    text.effects.Add(del);
+                if (!text.directDrawEffects.Contains(del))
+                    text.directDrawEffects.Add(del);
             }
         }
 
@@ -40,27 +39,29 @@ namespace Tatting
             MeshText text = GetComponent<MeshText>();
             if (text)
             {
-                if (text.effects.Contains(del))
-                    text.effects.Remove(del);
+                if (text.directDrawEffects.Contains(del))
+                    text.directDrawEffects.Remove(del);
             }
         }
 
 
-        protected abstract TRS TextEffect(Vector2 head, int index);
+        protected abstract void TextEffect(ref MaterialPropertyBlock materialPropertyBlock, int i, char c);
 
         
 
 
 
 #if UNITY_EDITOR
-        [CustomEditor(typeof(MeshTextEffect), true)]
+        [CustomEditor(typeof(DirectDrawEffect), true)]
         public class TattingEffectInspector : Editor
         {
             public override void OnInspectorGUI()
             {
                 base.OnInspectorGUI();
 
-                MeshTextEffect effect = (MeshTextEffect)target;
+                DirectDrawEffect effect = (DirectDrawEffect)target;
+
+                Undo.RecordObject(effect, "Inspector Change");
 
                 GUILayout.Space(4);
 
@@ -73,10 +74,10 @@ namespace Tatting
 
                     GUI.enabled = Application.isPlaying;
                     if (GUILayout.Button("Activate"))
-                        ((MeshTextEffect)target).Activate();
+                        ((DirectDrawEffect)target).Activate();
 
                     if (GUILayout.Button("Deactivate"))
-                        ((MeshTextEffect)target).Deactivate();
+                        ((DirectDrawEffect)target).Deactivate();
                 }
                 GUILayout.EndVertical();
             }

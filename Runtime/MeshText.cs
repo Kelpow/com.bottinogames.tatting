@@ -99,8 +99,6 @@ namespace Tatting
             }
         }
 
-        [System.NonSerialized] public List<MeshTextEffectDelegate> effects = new List<MeshTextEffectDelegate>();
-
         //private aka inspector-only
         [Header("Rendering")]
         [SerializeField]
@@ -109,14 +107,18 @@ namespace Tatting
         [SerializeField, HideInInspector, UnityEngine.Serialization.FormerlySerializedAs("material")]
         public Material directDrawMaterial;
 
-        //internal
-        
         private List<Line> lines;
-        private int combineArrayCount = 0;
+        private int countToDraw = 0;
         private CombineInstance[] combineArray = new CombineInstance[16];
         private TRS[] trsArray = new TRS[16];
+        private char[] drawnChar = new char[16];
 
+
+        // direct draw stuff
         private Bounds directDrawLocalBounds = new Bounds();
+        private MaterialPropertyBlock directDrawPropertyBlock;
+
+        [System.NonSerialized] public List<DirectDrawEffectDelegate> directDrawEffects = new List<DirectDrawEffectDelegate>();
 
         private Mesh _mesh;
         Mesh mesh
@@ -144,8 +146,12 @@ namespace Tatting
                 combineArray = new CombineInstance[16];
             if (trsArray == null)
                 trsArray = new TRS[16];
+            if (drawnChar == null)
+                drawnChar = new char[16];
             if (text == null)
                 text = "";
+
+            directDrawPropertyBlock = new MaterialPropertyBlock();
 
             UpdateText();
             UpdateMesh();
@@ -284,6 +290,7 @@ namespace Tatting
                     length *= 2;
                 combineArray = new CombineInstance[length];
                 trsArray = new TRS[length];
+                drawnChar = new char[length];
             }
 
             bool centerAligned = ((int)alignment & CEN) != 0;
@@ -315,6 +322,7 @@ namespace Tatting
                         var info = font.GetCharacterInfo(c);
                         combineArray[cai].mesh = info.mesh;
                         trsArray[cai] = characterTRS;
+                        drawnChar[cai] = c;
                         cai++;
 
                         characterTRS.translation += new Vector3(info.width * line.scale, 0f);
@@ -330,8 +338,6 @@ namespace Tatting
                 for (int i = 0; i < cai; i++)
                 {
                     trsArray[i].translation += verticalAlignmentShift;
-
-                    //TODO: Apply Effects
 
                     if (renderType == RenderType.DirectDraw)
                     {
@@ -361,7 +367,7 @@ namespace Tatting
                 combineArray[i].transform = trsArray[i].ToMatrix4x4();
             }
 
-            combineArrayCount = cai;
+            countToDraw = cai;
 
             if (renderType == RenderType.MeshRenderer)
             {
@@ -411,11 +417,23 @@ namespace Tatting
                 Matrix4x4 ltw = transform.localToWorldMatrix;
 
                 RenderParams renderParams = new RenderParams(directDrawMaterial);
+                renderParams.matProps = directDrawPropertyBlock;
+
                 renderParams.worldBounds = TransformBounds(in directDrawLocalBounds, in ltw);
                 renderParams.layer = gameObject.layer;
 
-                for (int i = 0; i < combineArrayCount; i++)
+                for (int i = 0; i < countToDraw; i++)
                 {
+                    if (directDrawEffects != null)
+                    {
+                        directDrawPropertyBlock.Clear();
+                        for (int di = 0; di < directDrawEffects.Count; di++)
+                        {
+                            if (directDrawEffects[di] != null)
+                                directDrawEffects[di].Invoke(ref directDrawPropertyBlock, i, drawnChar[i]);
+                        }
+                    }
+
                     Graphics.RenderMesh(in renderParams, combineArray[i].mesh, 0, ltw * combineArray[i].transform);
                 }
             }
