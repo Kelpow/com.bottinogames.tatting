@@ -163,6 +163,8 @@ namespace Tatting
                 lines = new List<Line>();
             else
                 lines.Clear();
+            if (text == null)
+                text = "";
 
             string[] baselines = text.Split('\n');
 
