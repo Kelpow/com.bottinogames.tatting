@@ -201,7 +201,7 @@ namespace Tatting
                         for (int i = 0; i < baseline.Length; i++)
                         {
                             char c = baseline[i];
-                            if (c == ' ') //someday should be converted to char.IsWhitespace(c)   ---   honestly don't know why I shouldn't now, but don't wanna fuck it up lmao
+                            if (char.IsWhiteSpace(c))
                             {
                                 var info = font.GetCharacterInfo(c);
                                 spacewidth += info.width;

@@ -135,7 +135,7 @@ namespace Tatting
             {
                 return info;
             }
-            else if (c == ' ')
+            else if (char.IsWhiteSpace(c))
             {
                 return WhitespaceCharacter;
             }
