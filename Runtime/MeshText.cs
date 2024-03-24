@@ -66,8 +66,6 @@ namespace Tatting
         }
 
 
-        [Tatting.Foldout("Advanced", true, true)]
-
         [SerializeField] WidthLimiting widthLimitMode = WidthLimiting.None;
         public WidthLimiting WidthLimitMode
         {
@@ -295,11 +293,11 @@ namespace Tatting
                 drawnChar = new char[length];
             }
 
-            bool centerAligned = ((int)alignment & CEN) != 0;
-            bool rightAligned = ((int)alignment & RIT) != 0;
+            bool centerAligned = ((byte)alignment & CEN) != 0;
+            bool rightAligned = ((byte)alignment & RIT) != 0;
 
-            bool middleAligned = ((int)alignment & MID) != 0;
-            bool bottomAligned = ((int)alignment & BOT) != 0;
+            bool middleAligned = ((byte)alignment & MID) != 0;
+            bool bottomAligned = ((byte)alignment & BOT) != 0;
 
             int cai = 0; //Combine Array Index
             if (lines.Count > 0)
@@ -337,27 +335,26 @@ namespace Tatting
                 else if (bottomAligned)
                     verticalAlignmentShift = new Vector3(0f, -lineheight);
 
-                for (int i = 0; i < cai; i++)
-                {
-                    trsArray[i].translation += verticalAlignmentShift;
-
-                    if (renderType == RenderType.DirectDraw)
-                    {
-                        xMin = Mathf.Min(trsArray[i].translation.x, xMin);
-                        xMax = Mathf.Max(trsArray[i].translation.x, xMax);
-                        yMin = Mathf.Min(trsArray[i].translation.y, yMin);
-                        yMax = Mathf.Max(trsArray[i].translation.y, yMax);
-                    }
-                }
-
-
-                // TODO: make this shit not a straight up guess lol, these additions should be 
                 if (renderType == RenderType.DirectDraw)
                 {
-                    const float CHAR_HALF_DEPTH = 0.05f;
+                    for (int i = 0; i < cai; i++)
+                    {
+                        trsArray[i].translation += verticalAlignmentShift;
+
+                        if (renderType == RenderType.DirectDraw)
+                        {
+                            xMin = Mathf.Min(trsArray[i].translation.x, xMin);
+                            xMax = Mathf.Max(trsArray[i].translation.x, xMax);
+                            yMin = Mathf.Min(trsArray[i].translation.y, yMin);
+                            yMax = Mathf.Max(trsArray[i].translation.y, yMax);
+                        }
+                    }
+
+                    // TODO: make this not a straight up guessed consts lol. Should be based off of mesh bounds of characters
+                    const float CHAR_HALF_DEPTH = 0.03f;
                     const float CHAR_WIDTH = .6f;
-                    const float CHAR_HEIGHT = 1f;
-                    const float MARGIN = 0.2f;
+                    const float CHAR_HEIGHT = .8f;
+                    const float MARGIN = 0.1f;
                     directDrawLocalBounds.SetMinMax(
                         new Vector3(xMin - MARGIN, yMin - MARGIN, -CHAR_HALF_DEPTH - MARGIN),
                         new Vector3(xMax + CHAR_WIDTH + MARGIN, yMax + CHAR_HEIGHT + MARGIN, CHAR_HALF_DEPTH + MARGIN));
@@ -375,7 +372,7 @@ namespace Tatting
             {
                 for (int i = cai; i < combineArray.Length; i++)
                 {
-                    //CombineMesh doesn't like null values or empty matices, so we have to flush the end of the array with empty meshes and identity matices.
+                    //CombineMesh doesn't like null values or empty matrices, so we have to flush the end of the array with empty meshes and identity matices.
                     combineArray[i].mesh = MeshFont.CharacterInfo.emptyMesh;
                     combineArray[i].transform = Matrix4x4.identity;
                 }
@@ -384,16 +381,17 @@ namespace Tatting
                 {
                     mesh.CombineMeshes(combineArray);
                 }
-                catch
+                catch(Exception e)
                 {
                     Debug.LogWarning("The number of vertices in the combined mesh exceded Unity's max vertext count. (65535 vertices) ((probably idk man this is a try catch))", this);
+                    Debug.LogException(e);
                 }
 
                 
             } 
             else if (renderType == RenderType.DirectDraw)
             {
-
+                //No Op for now
             }
         }
 
@@ -426,7 +424,8 @@ namespace Tatting
 
                 for (int i = 0; i < countToDraw; i++)
                 {
-                    if (directDrawEffects != null)
+                    
+                    if (Application.isPlaying && directDrawEffects != null)
                     {
                         directDrawPropertyBlock.Clear();
                         for (int di = 0; di < directDrawEffects.Count; di++)
@@ -474,10 +473,17 @@ namespace Tatting
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
+            // Direct Draw characters cannot be selected, so we need a gizmo to make object selection easier.
+            if (renderType != RenderType.DirectDraw)
+                return;
+
             Matrix4x4 ltw = transform.localToWorldMatrix;
-            Bounds test = TransformBounds(in directDrawLocalBounds, in ltw);
+            Bounds selectionBox = TransformBounds(in directDrawLocalBounds, in ltw);
             Gizmos.color = Color.grey;
-            Gizmos.DrawWireCube(test.center, test.size);
+            Gizmos.DrawWireCube(selectionBox.center, selectionBox.size);
+            //Clear gizmo to support gameobject selection in the center.
+            Gizmos.color = Color.clear;
+            Gizmos.DrawCube(selectionBox.center, selectionBox.size);
         }
 #endif
 
@@ -513,12 +519,12 @@ namespace Tatting
         [ContextMenu("Set name from text")]
         void SetNameFromText()
         {
+            Undo.RecordObject(gameObject, "Set name from text");
             gameObject.name = Text ;
         }
 
 
         // Adds "create new gameobject" functionality for 3D Mesh Text Renderers
-        // TODO: Have object be created similarly to other assets, follow hiearchy selection and all that
         [MenuItem("GameObject/3D Object/3D Text - Tatting", priority = 29)] 
         static void ObjectCreationMenuItem(MenuCommand command)
         {
@@ -606,14 +612,14 @@ namespace Tatting
 #endif
 
 
-        const int TOP = 1;
-        const int MID = 2;
-        const int BOT = 4;
-        const int LFT = 8;
-        const int CEN = 16;
-        const int RIT = 32;
+        const byte TOP = 0b0000_0001;
+        const byte MID = 0b0000_0010;
+        const byte BOT = 0b0000_0100;
+        const byte LFT = 0b0000_1000;
+        const byte CEN = 0b0001_0000;
+        const byte RIT = 0b0010_0000;
 
-        public enum TextAlignment : int
+        public enum TextAlignment : byte
         {
             TopLeft = TOP + LFT,
             TopCenter = TOP + CEN,
