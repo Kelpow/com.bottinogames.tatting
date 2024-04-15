@@ -422,10 +422,12 @@ namespace Tatting
                 renderParams.worldBounds = TransformBounds(in directDrawLocalBounds, in ltw);
                 renderParams.layer = gameObject.layer;
 
+                bool doEffects = Application.isPlaying && directDrawEffects != null && directDrawPropertyBlock != null;
+
                 for (int i = 0; i < countToDraw; i++)
                 {
                     
-                    if (Application.isPlaying && directDrawEffects != null)
+                    if (doEffects)
                     {
                         directDrawPropertyBlock.Clear();
                         for (int di = 0; di < directDrawEffects.Count; di++)
