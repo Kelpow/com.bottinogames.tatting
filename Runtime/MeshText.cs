@@ -335,21 +335,21 @@ namespace Tatting
                 else if (bottomAligned)
                     verticalAlignmentShift = new Vector3(0f, -lineheight);
 
+                for (int i = 0; i < cai; i++)
+                {
+                    trsArray[i].translation += verticalAlignmentShift;
+
+                    if (renderType == RenderType.DirectDraw)
+                    {
+                        xMin = Mathf.Min(trsArray[i].translation.x, xMin);
+                        xMax = Mathf.Max(trsArray[i].translation.x, xMax);
+                        yMin = Mathf.Min(trsArray[i].translation.y, yMin);
+                        yMax = Mathf.Max(trsArray[i].translation.y, yMax);
+                    }
+                }
+
                 if (renderType == RenderType.DirectDraw)
                 {
-                    for (int i = 0; i < cai; i++)
-                    {
-                        trsArray[i].translation += verticalAlignmentShift;
-
-                        if (renderType == RenderType.DirectDraw)
-                        {
-                            xMin = Mathf.Min(trsArray[i].translation.x, xMin);
-                            xMax = Mathf.Max(trsArray[i].translation.x, xMax);
-                            yMin = Mathf.Min(trsArray[i].translation.y, yMin);
-                            yMax = Mathf.Max(trsArray[i].translation.y, yMax);
-                        }
-                    }
-
                     // TODO: make this not a straight up guessed consts lol. Should be based off of mesh bounds of characters
                     const float CHAR_HALF_DEPTH = 0.03f;
                     const float CHAR_WIDTH = .6f;
